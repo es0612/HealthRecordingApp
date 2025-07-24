@@ -25,6 +25,7 @@ struct ContentView: View {
                 }
                 .onDelete(perform: deleteItems)
             }
+            #if os(iOS)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     EditButton()
@@ -35,6 +36,7 @@ struct ContentView: View {
                     }
                 }
             }
+            #endif
         } detail: {
             Text("Select an item")
         }

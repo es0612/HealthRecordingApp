@@ -175,6 +175,69 @@ final class Goal {
 }
 ```
 
+#### Badge（ゲーミフィケーション）
+```swift
+@Model
+final class Badge {
+    var id: UUID
+    var name: String
+    var description: String
+    var type: BadgeType
+    var requirement: BadgeRequirement
+    var isEarned: Bool
+    var earnedDate: Date?
+    var iconName: String
+    var colorScheme: BadgeColorScheme
+    
+    // Relationships
+    var user: User?
+    
+    init(name: String, description: String, type: BadgeType, requirement: BadgeRequirement, iconName: String, colorScheme: BadgeColorScheme) {
+        self.id = UUID()
+        self.name = name
+        self.description = description
+        self.type = type
+        self.requirement = requirement
+        self.isEarned = false
+        self.earnedDate = nil
+        self.iconName = iconName
+        self.colorScheme = colorScheme
+    }
+}
+
+enum BadgeType: String, CaseIterable, Codable {
+    case streak = "継続"
+    case milestone = "マイルストーン"
+    case achievement = "達成"
+    case special = "特別"
+}
+
+struct BadgeRequirement: Codable {
+    let type: RequirementType
+    let value: Double
+    let duration: Int? // 日数
+    
+    enum RequirementType: String, Codable {
+        case consecutiveDays = "連続日数"
+        case totalRecords = "総記録数"
+        case goalAchievement = "目標達成"
+        case weightLoss = "体重減少"
+        case stepsTotal = "歩数合計"
+    }
+}
+
+struct BadgeColorScheme: Codable {
+    let primary: String // Hex color
+    let secondary: String
+    let accent: String
+    
+    static let bronze = BadgeColorScheme(primary: "#CD7F32", secondary: "#8B4513", accent: "#FFD700")
+    static let silver = BadgeColorScheme(primary: "#C0C0C0", secondary: "#808080", accent: "#FFFFFF")
+    static let gold = BadgeColorScheme(primary: "#FFD700", secondary: "#FFA500", accent: "#FFFF00")
+    static let platinum = BadgeColorScheme(primary: "#E5E4E2", secondary: "#BCC6CC", accent: "#FFFFFF")
+}
+```
+
 ### Repository Protocols（Domain Layer）
 
 #### HealthRecordRepository
@@ -381,6 +444,427 @@ struct HealthInsight {
 
 enum InsightType {
     case positive, neutral, warning
+}
+```
+
+### ゲーミフィケーション機能
+
+#### BadgeService
+```swift
+protocol BadgeServiceProtocol {
+    func checkAndAwardBadges(for user: User) async throws -> [Badge]
+    func generateBadgeView(for badge: Badge) -> AnyView
+    func createDefaultBadges() -> [Badge]
+}
+
+final class BadgeService: BadgeServiceProtocol {
+    private let badgeRepository: BadgeRepositoryProtocol
+    private let healthRecordRepository: HealthRecordRepositoryProtocol
+    
+    init(badgeRepository: BadgeRepositoryProtocol, healthRecordRepository: HealthRecordRepositoryProtocol) {
+        self.badgeRepository = badgeRepository
+        self.healthRecordRepository = healthRecordRepository
+    }
+    
+    func checkAndAwardBadges(for user: User) async throws -> [Badge] {
+        let userBadges = try await badgeRepository.fetchBadges(for: user)
+        let unearnedBadges = userBadges.filter { !$0.isEarned }
+        var newlyEarnedBadges: [Badge] = []
+        
+        for badge in unearnedBadges {
+            if try await checkBadgeRequirement(badge, for: user) {
+                badge.isEarned = true
+                badge.earnedDate = Date()
+                try await badgeRepository.save(badge)
+                newlyEarnedBadges.append(badge)
+            }
+        }
+        
+        return newlyEarnedBadges
+    }
+    
+    private func checkBadgeRequirement(_ badge: Badge, for user: User) async throws -> Bool {
+        switch badge.requirement.type {
+        case .consecutiveDays:
+            return try await checkConsecutiveDays(badge.requirement.value, for: user)
+        case .totalRecords:
+            return try await checkTotalRecords(badge.requirement.value, for: user)
+        case .goalAchievement:
+            return try await checkGoalAchievement(for: user)
+        case .weightLoss:
+            return try await checkWeightLoss(badge.requirement.value, for: user)
+        case .stepsTotal:
+            return try await checkStepsTotal(badge.requirement.value, for: user)
+        }
+    }
+    
+    func generateBadgeView(for badge: Badge) -> AnyView {
+        AnyView(
+            BadgeView(
+                badge: badge,
+                colorScheme: badge.colorScheme,
+                isEarned: badge.isEarned
+            )
+        )
+    }
+    
+    func createDefaultBadges() -> [Badge] {
+        return [
+            Badge(
+                name: "はじめの一歩",
+                description: "初回記録を達成",
+                type: .milestone,
+                requirement: BadgeRequirement(type: .totalRecords, value: 1, duration: nil),
+                iconName: "star.fill",
+                colorScheme: .bronze
+            ),
+            Badge(
+                name: "継続は力なり",
+                description: "7日連続記録を達成",
+                type: .streak,
+                requirement: BadgeRequirement(type: .consecutiveDays, value: 7, duration: 7),
+                iconName: "flame.fill",
+                colorScheme: .silver
+            ),
+            Badge(
+                name: "健康マスター",
+                description: "30日連続記録を達成",
+                type: .streak,
+                requirement: BadgeRequirement(type: .consecutiveDays, value: 30, duration: 30),
+                iconName: "crown.fill",
+                colorScheme: .gold
+            )
+        ]
+    }
+}
+```
+
+#### BadgeView（SwiftUI描画）
+```swift
+import SwiftUI
+
+struct BadgeView: View {
+    let badge: Badge
+    let colorScheme: BadgeColorScheme
+    let isEarned: Bool
+    
+    var body: some View {
+        ZStack {
+            // 背景円
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color(hex: colorScheme.primary),
+                            Color(hex: colorScheme.secondary)
+                        ],
+                        center: .topLeading,
+                        startRadius: 5,
+                        endRadius: 50
+                    )
+                )
+                .frame(width: 80, height: 80)
+                .opacity(isEarned ? 1.0 : 0.3)
+            
+            // 装飾リング
+            Circle()
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color(hex: colorScheme.accent),
+                            Color(hex: colorScheme.primary)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 3
+                )
+                .frame(width: 85, height: 85)
+                .opacity(isEarned ? 1.0 : 0.2)
+            
+            // アイコン
+            Image(systemName: badge.iconName)
+                .font(.system(size: 30, weight: .bold))
+                .foregroundColor(Color(hex: colorScheme.accent))
+                .opacity(isEarned ? 1.0 : 0.4)
+            
+            // 未獲得時のロックアイコン
+            if !isEarned {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.gray)
+                    .offset(x: 25, y: 25)
+            }
+        }
+        .scaleEffect(isEarned ? 1.0 : 0.8)
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: isEarned)
+    }
+}
+
+// Color extension for hex support
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (1, 1, 1, 0)
+        }
+        
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue:  Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
+```
+
+### AI連携対応ロギング機能
+
+#### AILogger
+```swift
+import Foundation
+import os.log
+
+protocol AILoggerProtocol {
+    func debug(_ message: String, context: [String: Any]?)
+    func info(_ message: String, context: [String: Any]?)
+    func warning(_ message: String, context: [String: Any]?)
+    func error(_ error: Error, context: [String: Any]?)
+    func logUserAction(_ action: String, parameters: [String: Any]?)
+    func logPerformance(_ operation: String, duration: TimeInterval, success: Bool)
+}
+
+final class AILogger: AILoggerProtocol {
+    private let logger = Logger(subsystem: "com.asapapalab.HealthRecordingApp", category: "AILogger")
+    private let logLevel: LogLevel
+    private let isProduction: Bool
+    
+    enum LogLevel: Int, CaseIterable {
+        case debug = 0
+        case info = 1
+        case warning = 2
+        case error = 3
+        
+        var emoji: String {
+            switch self {
+            case .debug: return "🔍"
+            case .info: return "ℹ️"
+            case .warning: return "⚠️"
+            case .error: return "❌"
+            }
+        }
+    }
+    
+    init(logLevel: LogLevel = .info, isProduction: Bool = false) {
+        self.logLevel = logLevel
+        self.isProduction = isProduction
+    }
+    
+    func debug(_ message: String, context: [String: Any]? = nil) {
+        log(level: .debug, message: message, context: context)
+    }
+    
+    func info(_ message: String, context: [String: Any]? = nil) {
+        log(level: .info, message: message, context: context)
+    }
+    
+    func warning(_ message: String, context: [String: Any]? = nil) {
+        log(level: .warning, message: message, context: context)
+    }
+    
+    func error(_ error: Error, context: [String: Any]? = nil) {
+        var errorContext = context ?? [:]
+        errorContext["error_type"] = String(describing: type(of: error))
+        errorContext["error_description"] = error.localizedDescription
+        
+        if let healthAppError = error as? HealthAppError {
+            errorContext["app_error_type"] = String(describing: healthAppError)
+        }
+        
+        log(level: .error, message: "Error occurred", context: errorContext)
+    }
+    
+    func logUserAction(_ action: String, parameters: [String: Any]? = nil) {
+        var context = parameters ?? [:]
+        context["action_type"] = "user_interaction"
+        context["timestamp"] = ISO8601DateFormatter().string(from: Date())
+        
+        info("User action: \(action)", context: context)
+    }
+    
+    func logPerformance(_ operation: String, duration: TimeInterval, success: Bool) {
+        let context: [String: Any] = [
+            "operation": operation,
+            "duration_ms": Int(duration * 1000),
+            "success": success,
+            "performance_category": categorizePerformance(duration)
+        ]
+        
+        let message = "Performance: \(operation) (\(Int(duration * 1000))ms)"
+        
+        if success {
+            info(message, context: context)
+        } else {
+            warning("\(message) - FAILED", context: context)
+        }
+    }
+    
+    private func log(level: LogLevel, message: String, context: [String: Any]?) {
+        guard level.rawValue >= logLevel.rawValue else { return }
+        
+        let logEntry = createLogEntry(level: level, message: message, context: context)
+        
+        // Console logging
+        logger.log(level: osLogLevel(for: level), "\(logEntry.consoleMessage)")
+        
+        // Structured logging for AI analysis
+        if !isProduction || level.rawValue >= LogLevel.warning.rawValue {
+            logStructuredEntry(logEntry)
+        }
+    }
+    
+    private func createLogEntry(level: LogLevel, message: String, context: [String: Any]?) -> LogEntry {
+        var sanitizedContext = context ?? [:]
+        
+        // Remove PII in production
+        if isProduction {
+            sanitizedContext = sanitizeContext(sanitizedContext)
+        }
+        
+        return LogEntry(
+            timestamp: Date(),
+            level: level,
+            message: message,
+            context: sanitizedContext,
+            thread: Thread.current.name ?? "unknown",
+            file: #file,
+            function: #function,
+            line: #line
+        )
+    }
+    
+    private func sanitizeContext(_ context: [String: Any]) -> [String: Any] {
+        var sanitized = context
+        
+        // Remove potential PII
+        let piiKeys = ["name", "email", "phone", "address", "user_id"]
+        for key in piiKeys {
+            if sanitized[key] != nil {
+                sanitized[key] = "[REDACTED]"
+            }
+        }
+        
+        return sanitized
+    }
+    
+    private func logStructuredEntry(_ entry: LogEntry) {
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: entry.toDictionary(), options: [])
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                print("AI_LOG: \(jsonString)")
+            }
+        } catch {
+            logger.error("Failed to serialize log entry: \(error.localizedDescription)")
+        }
+    }
+    
+    private func osLogLevel(for level: LogLevel) -> OSLogType {
+        switch level {
+        case .debug: return .debug
+        case .info: return .info
+        case .warning: return .default
+        case .error: return .error
+        }
+    }
+    
+    private func categorizePerformance(_ duration: TimeInterval) -> String {
+        switch duration {
+        case 0..<0.1: return "excellent"
+        case 0.1..<0.5: return "good"
+        case 0.5..<1.0: return "acceptable"
+        case 1.0..<3.0: return "slow"
+        default: return "very_slow"
+        }
+    }
+}
+
+struct LogEntry {
+    let timestamp: Date
+    let level: AILogger.LogLevel
+    let message: String
+    let context: [String: Any]
+    let thread: String
+    let file: String
+    let function: String
+    let line: Int
+    
+    var consoleMessage: String {
+        let timeString = ISO8601DateFormatter().string(from: timestamp)
+        let fileName = (file as NSString).lastPathComponent
+        return "\(level.emoji) [\(timeString)] \(fileName):\(line) \(function) - \(message)"
+    }
+    
+    func toDictionary() -> [String: Any] {
+        return [
+            "timestamp": ISO8601DateFormatter().string(from: timestamp),
+            "level": String(describing: level),
+            "message": message,
+            "context": context,
+            "thread": thread,
+            "source": [
+                "file": (file as NSString).lastPathComponent,
+                "function": function,
+                "line": line
+            ]
+        ]
+    }
+}
+
+// Usage example in Use Cases
+extension RecordHealthDataUseCase {
+    func execute(for user: User) async throws {
+        let startTime = Date()
+        let logger = AILogger()
+        
+        logger.logUserAction("sync_health_data", parameters: ["user_id": user.id.uuidString])
+        
+        do {
+            let healthKitData = try await healthKitService.fetchLatestData()
+            logger.info("Fetched \(healthKitData.count) health records from HealthKit")
+            
+            for data in healthKitData {
+                let record = HealthRecord(
+                    type: data.type,
+                    value: data.value,
+                    unit: data.unit,
+                    source: .healthKit
+                )
+                record.user = user
+                try await healthRecordRepository.save(record)
+            }
+            
+            let duration = Date().timeIntervalSince(startTime)
+            logger.logPerformance("sync_health_data", duration: duration, success: true)
+            
+        } catch {
+            let duration = Date().timeIntervalSince(startTime)
+            logger.logPerformance("sync_health_data", duration: duration, success: false)
+            logger.error(error, context: ["user_id": user.id.uuidString])
+            throw error
+        }
+    }
 }
 ```
 
