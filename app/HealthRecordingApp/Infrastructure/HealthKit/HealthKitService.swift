@@ -99,7 +99,7 @@ final class HealthKitService {
         type: HealthDataType,
         startDate: Date,
         endDate: Date
-    ) async throws -> [HealthRecord] {
+    ) async throws -> [HealthKitData] {
         // テスト用シミュレーション
         if simulateDataAccessFailed {
             let error = NSError(domain: "HealthKitTestError", code: 1001, userInfo: nil)
@@ -130,23 +130,39 @@ final class HealthKitService {
                     return
                 }
                 
-                let healthRecords: [HealthRecord] = (samples as? [HKQuantitySample])?.map { sample in
-                    let record = HealthRecord(
+                let healthKitData: [HealthKitData] = (samples as? [HKQuantitySample])?.map { sample in
+                    HealthKitData(
                         type: type,
                         value: sample.quantity.doubleValue(for: self.getUnit(for: type)),
                         unit: type.displayName,
-                        source: .healthKit
+                        startDate: sample.startDate,
+                        endDate: sample.endDate
                     )
-                    // Update timestamp with sample's start date
-                    record.timestamp = sample.startDate
-                    return record
                 } ?? []
                 
-                continuation.resume(returning: healthRecords)
+                continuation.resume(returning: healthKitData)
             }
             
             healthStore.execute(query)
         }
+    }
+    
+    // MARK: - Reading Multiple Data Types
+    
+    func readHealthData(types: [HealthDataType], startDate: Date, endDate: Date) async throws -> [HealthKitData] {
+        var allData: [HealthKitData] = []
+        
+        for type in types {
+            do {
+                let typeData = try await readHealthData(type: type, startDate: startDate, endDate: endDate)
+                allData.append(contentsOf: typeData)
+            } catch {
+                // Continue with other types if one fails
+                continue
+            }
+        }
+        
+        return allData
     }
     
     // MARK: - Writing Data

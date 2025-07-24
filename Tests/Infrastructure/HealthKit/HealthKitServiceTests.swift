@@ -12,7 +12,7 @@ struct HealthKitServiceTests {
         let service = HealthKitService()
         
         // Then
-        #expect(service != nil)
+        // Service should be created successfully
         #expect(service.isHealthDataAvailable == true) // HealthKit利用可能環境を想定
         #expect(service.authorizationStatus == .notDetermined) // 初期状態
     }
@@ -50,17 +50,17 @@ struct HealthKitServiceTests {
         )
         
         // Then
-        #expect(healthData != nil)
+        // HealthData should be returned successfully
         #expect(healthData.count >= 0) // 0件以上のデータを想定
         
         // データが存在する場合の検証
         if !healthData.isEmpty {
             let firstRecord = healthData.first!
             #expect(firstRecord.type == dataType)
-            #expect(firstRecord.timestamp >= startDate)
-            #expect(firstRecord.timestamp <= endDate)
+            #expect(firstRecord.startDate >= startDate)
+            #expect(firstRecord.endDate <= endDate)
             #expect(firstRecord.value > 0)
-            #expect(firstRecord.source == .healthKit)
+            // HealthKitData doesn't have source property - all data from HealthKit is implicitly from HealthKit
         }
     }
     
@@ -95,7 +95,7 @@ struct HealthKitServiceTests {
         }
         
         // Then
-        #expect(observer != nil)
+        // Observer should be created successfully
         #expect(observedChanges >= 0) // 初期状態では変更なし
         
         // Cleanup
