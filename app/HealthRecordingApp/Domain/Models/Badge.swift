@@ -12,35 +12,40 @@ final class Badge {
     var isEarned: Bool
     var earnedDate: Date?
     var createdAt: Date
-    var requirement: BadgeRequirement?
+    var requirement: BadgeRequirement
     
-    init(name: String, description: String, type: BadgeType, iconName: String, colorScheme: BadgeColorScheme) {
+    // Relationship
+    var user: User?
+    
+    init(name: String, description: String, type: BadgeType, requirement: BadgeRequirement, iconName: String, colorScheme: BadgeColorScheme) throws {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            fatalError("Badge name cannot be empty")
+            throw ValidationError.invalidInput("Badge", value: name, reason: "Badge name cannot be empty")
         }
         guard !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            fatalError("Badge description cannot be empty")
+            throw ValidationError.invalidInput("Badge", value: description, reason: "Badge description cannot be empty")
         }
         guard !iconName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            fatalError("Badge iconName cannot be empty")
+            throw ValidationError.invalidInput("Badge", value: iconName, reason: "Badge iconName cannot be empty")
         }
         
         self.id = UUID()
         self.name = name
         self.badgeDescription = description
         self.type = type
+        self.requirement = requirement
         self.iconName = iconName
         self.colorScheme = colorScheme
         self.isEarned = false
         self.earnedDate = nil
         self.createdAt = Date()
-        self.requirement = nil
+        self.user = nil
     }
     
     /// バッジを獲得する
-    func earn() {
+    func earn(for user: User) {
         guard !isEarned else { return } // 既に獲得済みの場合は何もしない
         
+        self.user = user
         isEarned = true
         earnedDate = Date()
     }
@@ -49,6 +54,7 @@ final class Badge {
     func reset() {
         isEarned = false
         earnedDate = nil
+        user = nil
     }
     
     /// 表示用の名前
@@ -109,36 +115,43 @@ enum BadgeColorScheme: String, CaseIterable, Codable {
 }
 
 /// バッジ獲得の条件
-@Model
-final class BadgeRequirement {
-    var id: UUID
-    var type: BadgeRequirementType
-    var targetValue: Double
-    var dataType: HealthDataType
-    var requirementDescription: String
-    var createdAt: Date
+enum BadgeRequirement: Codable, Equatable {
+    case recordCount(count: Int)    // 記録数達成
+    case streak(days: Int)          // 連続日数達成
+    case milestone(value: Double)   // 目標値達成
+    case special                    // 特別な条件
     
-    init(type: BadgeRequirementType, targetValue: Double, dataType: HealthDataType, description: String) {
-        guard targetValue > 0 else {
-            fatalError("Badge requirement target value must be positive")
+    /// 条件の説明文
+    var description: String {
+        switch self {
+        case .recordCount(let count):
+            return "\(count)回の記録"
+        case .streak(let days):
+            return "\(days)日連続記録"
+        case .milestone(let value):
+            return "目標値\(value)達成"
+        case .special:
+            return "特別な条件"
         }
-        guard !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            fatalError("Badge requirement description cannot be empty")
-        }
-        
-        self.id = UUID()
-        self.type = type
-        self.targetValue = targetValue
-        self.dataType = dataType
-        self.requirementDescription = description
-        self.createdAt = Date()
     }
-}
-
-/// バッジ条件の種類
-enum BadgeRequirementType: String, CaseIterable, Codable {
-    case streak = "連続記録"     // 連続日数
-    case total = "累計"         // 累計値
-    case milestone = "到達"     // 目標到達
-    case frequency = "頻度"     // 記録頻度
+    
+    /// 条件が達成されているかチェック
+    func isMet(for user: User) -> Bool {
+        switch self {
+        case .recordCount(let count):
+            return user.healthRecords.count >= count
+        case .streak(let days):
+            // 簡易実装：連続記録のロジックは実際にはより複雑
+            return user.healthRecords.count >= days
+        case .milestone(let value):
+            // 簡易実装：最新の体重記録が目標値以下かチェック
+            if let currentWeight = user.currentWeight {
+                return currentWeight <= value
+            }
+            return false
+        case .special:
+            // 特別な条件は個別に実装
+            return false
+        }
+    }
 }

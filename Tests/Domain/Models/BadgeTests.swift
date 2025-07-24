@@ -15,10 +15,11 @@ struct BadgeTests {
         let colorScheme = BadgeColorScheme.bronze
         
         // When
-        let badge = Badge(
+        let badge = try Badge(
             name: name,
             description: description,
             type: type,
+            requirement: BadgeRequirement.recordCount(count: 1),
             iconName: iconName,
             colorScheme: colorScheme
         )
@@ -38,9 +39,11 @@ struct BadgeTests {
     @Test("Badge should have unique ID for each instance")
     func testBadgeUniqueID() async throws {
         // Given & When
-        let badge1 = Badge(name: "Badge1", description: "Test1", type: .streak,
+        let badge1 = try Badge(name: "Badge1", description: "Test1", type: .streak,
+                          requirement: BadgeRequirement.streak(days: 7),
                           iconName: "star", colorScheme: .bronze)
-        let badge2 = Badge(name: "Badge2", description: "Test2", type: .achievement,
+        let badge2 = try Badge(name: "Badge2", description: "Test2", type: .achievement,
+                          requirement: BadgeRequirement.recordCount(count: 10),
                           iconName: "trophy", colorScheme: .silver)
         
         // Then
@@ -50,16 +53,19 @@ struct BadgeTests {
     @Test("Badge should be earned correctly")
     func testBadgeEarning() async throws {
         // Given
-        let badge = Badge(name: "継続は力なり", description: "7日連続記録", type: .streak,
+        let badge = try Badge(name: "継続は力なり", description: "7日連続記録", type: .streak,
+                         requirement: BadgeRequirement.streak(days: 7),
                          iconName: "flame", colorScheme: .gold)
+        let user = try User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
         
         // When - Initial state
         #expect(badge.isEarned == false)
         #expect(badge.earnedDate == nil)
+        #expect(badge.user == nil)
         
         // When - Earn badge
         let beforeEarning = Date()
-        badge.earn()
+        badge.earn(for: user)
         let afterEarning = Date()
         
         // Then
@@ -67,23 +73,26 @@ struct BadgeTests {
         #expect(badge.earnedDate != nil)
         #expect(badge.earnedDate! >= beforeEarning)
         #expect(badge.earnedDate! <= afterEarning)
+        #expect(badge.user?.id == user.id)
     }
     
     @Test("Badge should not be earned twice")
     func testBadgeEarningOnce() async throws {
         // Given
-        let badge = Badge(name: "Test Badge", description: "Test", type: .milestone,
+        let badge = try Badge(name: "Test Badge", description: "Test", type: .milestone,
+                         requirement: BadgeRequirement.recordCount(count: 10),
                          iconName: "star", colorScheme: .bronze)
+        let user = try User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
         
         // When - First earning
-        badge.earn()
+        badge.earn(for: user)
         let firstEarnedDate = badge.earnedDate
         
         // Small delay to ensure different timestamps
         try await Task.sleep(nanoseconds: 1_000_000) // 1ms
         
         // When - Try to earn again
-        badge.earn()
+        badge.earn(for: user)
         
         // Then - Should not change
         #expect(badge.earnedDate == firstEarnedDate)
@@ -93,9 +102,11 @@ struct BadgeTests {
     @Test("Badge should reset correctly")
     func testBadgeReset() async throws {
         // Given
-        let badge = Badge(name: "Test Badge", description: "Test", type: .streak,
+        let badge = try Badge(name: "Test Badge", description: "Test", type: .streak,
+                         requirement: BadgeRequirement.streak(days: 7),
                          iconName: "star", colorScheme: .bronze)
-        badge.earn()
+        let user = try User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
+        badge.earn(for: user)
         
         // When - Reset badge
         badge.reset()
@@ -103,39 +114,38 @@ struct BadgeTests {
         // Then
         #expect(badge.isEarned == false)
         #expect(badge.earnedDate == nil)
+        #expect(badge.user == nil)
     }
     
     @Test("Badge should validate requirements correctly")
     func testBadgeRequirementValidation() async throws {
         // Given
-        let requirement = BadgeRequirement(
-            type: .streak,
-            targetValue: 7.0,
-            dataType: .weight,
-            description: "7日連続体重記録"
-        )
+        let requirement = BadgeRequirement.streak(days: 7)
         
-        let badge = Badge(name: "継続バッジ", description: "7日連続", type: .streak,
+        let badge = try Badge(name: "継続バッジ", description: "7日連続", type: .streak,
+                         requirement: requirement,
                          iconName: "flame", colorScheme: .silver)
-        badge.requirement = requirement
         
         // When & Then
-        #expect(badge.requirement != nil)
-        #expect(badge.requirement?.type == .streak)
-        #expect(badge.requirement?.targetValue == 7.0)
-        #expect(badge.requirement?.dataType == .weight)
+        #expect(badge.requirement == BadgeRequirement.streak(days: 7))
+        #expect(badge.requirement.description == "7日連続記録")
+        
+        // Test user to check if requirement is met
+        let user = try User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
+        #expect(badge.requirement.isMet(for: user) == false) // No records yet
     }
     
     @Test("Badge should provide display information")
     func testBadgeDisplayInfo() async throws {
         // Given
-        let badge = Badge(name: "マスターバッジ", description: "全目標達成", type: .special,
+        let badge = try Badge(name: "マスターバッジ", description: "全目標達成", type: .special,
+                         requirement: BadgeRequirement.special,
                          iconName: "crown.fill", colorScheme: .platinum)
         
         // When & Then
         #expect(badge.displayName == "マスターバッジ")
         #expect(badge.displayDescription == "全目標達成")
         #expect(badge.sfSymbolName == "crown.fill")
-        #expect(!badge.isSpecialBadge == false) // special type
+        #expect(badge.isSpecialBadge == true) // special type should be true
     }
 }

@@ -13,7 +13,7 @@ struct GoalTests {
         let deadline = Calendar.current.date(byAdding: .month, value: 3, to: Date())!
         
         // When
-        let goal = Goal(type: type, targetValue: targetValue, deadline: deadline)
+        let goal = try Goal(type: type, targetValue: targetValue, deadline: deadline)
         
         // Then
         #expect(goal.type == .weight)
@@ -30,8 +30,8 @@ struct GoalTests {
     func testGoalUniqueID() async throws {
         // Given & When
         let deadline = Calendar.current.date(byAdding: .month, value: 3, to: Date())!
-        let goal1 = Goal(type: .weight, targetValue: 65.0, deadline: deadline)
-        let goal2 = Goal(type: .steps, targetValue: 10000.0, deadline: deadline)
+        let goal1 = try Goal(type: .weight, targetValue: 65.0, deadline: deadline)
+        let goal2 = try Goal(type: .steps, targetValue: 10000.0, deadline: deadline)
         
         // Then
         #expect(goal1.id != goal2.id)
@@ -41,7 +41,7 @@ struct GoalTests {
     func testGoalProgress() async throws {
         // Given
         let deadline = Calendar.current.date(byAdding: .month, value: 3, to: Date())!
-        let goal = Goal(type: .weight, targetValue: 100.0, deadline: deadline)
+        let goal = try Goal(type: .weight, targetValue: 100.0, deadline: deadline)
         
         // When - Initial progress
         #expect(goal.progress == 0.0)
@@ -61,7 +61,7 @@ struct GoalTests {
     func testGoalCompletion() async throws {
         // Given
         let deadline = Calendar.current.date(byAdding: .month, value: 3, to: Date())!
-        let goal = Goal(type: .steps, targetValue: 10000.0, deadline: deadline)
+        let goal = try Goal(type: .steps, targetValue: 10000.0, deadline: deadline)
         
         // When - Not completed
         goal.currentValue = 5000.0
@@ -82,19 +82,19 @@ struct GoalTests {
         let futureDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
         
         // When & Then
-        let expiredGoal = Goal(type: .weight, targetValue: 65.0, deadline: pastDate)
+        let expiredGoal = try Goal(type: .weight, targetValue: 65.0, deadline: pastDate)
         #expect(expiredGoal.isExpired == true)
         
-        let activeGoal = Goal(type: .weight, targetValue: 65.0, deadline: futureDate)
+        let activeGoal = try Goal(type: .weight, targetValue: 65.0, deadline: futureDate)
         #expect(activeGoal.isExpired == false)
     }
     
     @Test("Goal should update current value from health records")
     func testGoalUpdateFromHealthRecords() async throws {
         // Given
-        let user = User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
+        let user = try User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
         let deadline = Calendar.current.date(byAdding: .month, value: 3, to: Date())!
-        let goal = Goal(type: .weight, targetValue: 65.0, deadline: deadline)
+        let goal = try Goal(type: .weight, targetValue: 65.0, deadline: deadline)
         goal.user = user
         
         let record1 = HealthRecord(type: .weight, value: 70.0, unit: "kg")

@@ -14,18 +14,18 @@ final class User {
     @Relationship(deleteRule: .cascade) var healthRecords: [HealthRecord] = []
     @Relationship(deleteRule: .cascade) var goals: [Goal] = []
     
-    init(name: String, age: Int, height: Double, targetWeight: Double) {
+    init(name: String, age: Int, height: Double, targetWeight: Double) throws {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            fatalError("User name cannot be empty")
+            throw ValidationError.invalidInput("User", value: name, reason: "User name cannot be empty")
         }
         guard age >= 10 && age <= 120 else {
-            fatalError("User age must be between 10 and 120")
+            throw ValidationError.invalidInput("User", value: "\(age)", reason: "User age must be between 10 and 120")
         }
         guard height > 0 && height <= 300 else {
-            fatalError("User height must be between 0 and 300 cm")
+            throw ValidationError.invalidInput("User", value: "\(height)", reason: "User height must be between 0 and 300 cm")
         }
         guard targetWeight > 0 && targetWeight <= 500 else {
-            fatalError("User target weight must be between 0 and 500 kg")
+            throw ValidationError.invalidInput("User", value: "\(targetWeight)", reason: "User target weight must be between 0 and 500 kg")
         }
         
         self.id = UUID()
@@ -90,9 +90,9 @@ final class Goal {
     // Relationship
     var user: User?
     
-    init(type: HealthDataType, targetValue: Double, deadline: Date) {
+    init(type: HealthDataType, targetValue: Double, deadline: Date) throws {
         guard targetValue > 0 else {
-            fatalError("Goal target value must be positive")
+            throw ValidationError.invalidInput("Goal", value: "\(targetValue)", reason: "Goal target value must be positive")
         }
         
         self.id = UUID()

@@ -14,7 +14,7 @@ struct UserTests {
         let targetWeight = TestHealthData.testUserTargetWeight
         
         // When
-        let user = User(name: name, age: age, height: height, targetWeight: targetWeight)
+        let user = try User(name: name, age: age, height: height, targetWeight: targetWeight)
         
         // Then
         #expect(user.name == TestHealthData.testUserName)
@@ -30,8 +30,8 @@ struct UserTests {
     @Test("User should have unique ID for each instance")
     func testUserUniqueID() async throws {
         // Given & When
-        let user1 = User(name: "User1", age: 30, height: 170.0, targetWeight: 65.0)
-        let user2 = User(name: "User2", age: 25, height: 160.0, targetWeight: 55.0)
+        let user1 = try User(name: "User1", age: 30, height: 170.0, targetWeight: 65.0)
+        let user2 = try User(name: "User2", age: 25, height: 160.0, targetWeight: 55.0)
         
         // Then
         #expect(user1.id != user2.id)
@@ -40,7 +40,7 @@ struct UserTests {
     @Test("User should manage health records relationship")
     func testUserHealthRecordsRelationship() async throws {
         // Given
-        let user = User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
+        let user = try User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
         let healthRecord1 = HealthRecord(type: .weight, value: 70.0, unit: "kg")
         let healthRecord2 = HealthRecord(type: .steps, value: 10000.0, unit: "count")
         
@@ -61,7 +61,7 @@ struct UserTests {
     @Test("User should calculate BMI correctly")
     func testUserBMICalculation() async throws {
         // Given
-        let user = User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
+        let user = try User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
         
         // When & Then
         let expectedBMI = 65.0 / ((170.0 / 100) * (170.0 / 100))
@@ -71,33 +71,33 @@ struct UserTests {
     @Test("User age should be within valid range")
     func testUserAgeValidation() async throws {
         // Given & When & Then
-        let youngUser = User(name: "Young User", age: 18, height: 170.0, targetWeight: 65.0)
+        let youngUser = try User(name: "Young User", age: 18, height: 170.0, targetWeight: 65.0)
         #expect(youngUser.isValidAge)
         
-        let oldUser = User(name: "Old User", age: 100, height: 170.0, targetWeight: 65.0)
+        let oldUser = try User(name: "Old User", age: 100, height: 170.0, targetWeight: 65.0)
         #expect(oldUser.isValidAge)
     }
     
     @Test("User should categorize BMI correctly")
     func testUserBMICategory() async throws {
         // Given & When & Then
-        let underweightUser = User(name: "Underweight", age: 30, height: 170.0, targetWeight: 50.0) // BMI 17.3
+        let underweightUser = try User(name: "Underweight", age: 30, height: 170.0, targetWeight: 50.0) // BMI 17.3
         #expect(underweightUser.bmiCategory == .underweight)
         
-        let normalUser = User(name: "Normal", age: 30, height: 170.0, targetWeight: 65.0) // BMI 22.5
+        let normalUser = try User(name: "Normal", age: 30, height: 170.0, targetWeight: 65.0) // BMI 22.5
         #expect(normalUser.bmiCategory == .normal)
         
-        let overweightUser = User(name: "Overweight", age: 30, height: 170.0, targetWeight: 75.0) // BMI 26.0
+        let overweightUser = try User(name: "Overweight", age: 30, height: 170.0, targetWeight: 75.0) // BMI 26.0
         #expect(overweightUser.bmiCategory == .overweight)
         
-        let obeseUser = User(name: "Obese", age: 30, height: 170.0, targetWeight: 90.0) // BMI 31.1
+        let obeseUser = try User(name: "Obese", age: 30, height: 170.0, targetWeight: 90.0) // BMI 31.1
         #expect(obeseUser.bmiCategory == .obese)
     }
     
     @Test("User should get current weight from latest health record")
     func testUserCurrentWeight() async throws {
         // Given
-        let user = User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
+        let user = try User(name: "Test User", age: 30, height: 170.0, targetWeight: 65.0)
         
         // When - No health records
         #expect(user.currentWeight == nil)
