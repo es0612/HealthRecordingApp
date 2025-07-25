@@ -85,7 +85,7 @@ protocol FetchHealthDataUseCaseProtocol {
 // MARK: - Supporting Data Structures
 
 /// Date range for filtering health data
-struct DateRange {
+struct DateRange: Codable {
     let startDate: Date
     let endDate: Date
     
@@ -178,10 +178,20 @@ struct HealthDataStatistics {
 }
 
 /// Trend direction for health data analysis
-enum TrendDirection: String, CaseIterable {
+enum TrendDirection: String, CaseIterable, Codable {
     case increasing = "増加傾向"
     case decreasing = "減少傾向"
     case stable = "安定"
+    case volatile = "変動大"
+    
+    var emoji: String {
+        switch self {
+        case .increasing: return "📈"
+        case .decreasing: return "📉"
+        case .stable: return "➡️"
+        case .volatile: return "🌊"
+        }
+    }
 }
 
 /// Search criteria for health data queries
