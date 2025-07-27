@@ -5,12 +5,12 @@ protocol TrendAnalyzerProtocol {
     // MARK: - Core Trend Analysis
     
     func analyzeTrends(
-        from records: [HealthRecord],
+        from records: [HealthRecordProtocol],
         timeRange: TimeRange
     ) async throws -> TrendAnalysis
     
     func analyzeTrends(
-        from records: [HealthRecord],
+        from records: [HealthRecordProtocol],
         dateRange: DateRange
     ) async throws -> TrendAnalysis
     
@@ -34,7 +34,7 @@ protocol TrendAnalyzerProtocol {
     // MARK: - Anomaly Detection
     
     func detectAnomalies(
-        in records: [HealthRecord],
+        in records: [HealthRecordProtocol],
         sensitivity: Double
     ) async throws -> [AnomalyPoint]
     
@@ -51,7 +51,7 @@ protocol TrendAnalyzerProtocol {
     ) async throws -> TrendPrediction
     
     func predictValue(
-        from records: [HealthRecord],
+        from records: [HealthRecordProtocol],
         daysAhead: Int,
         method: PredictionMethod
     ) async throws -> Double
@@ -85,11 +85,11 @@ protocol TrendAnalyzerProtocol {
     // MARK: - Data Quality Assessment
     
     func assessDataQuality(
-        records: [HealthRecord]
+        records: [HealthRecordProtocol]
     ) -> DataQualityAssessment
     
     func identifyDataGaps(
-        in records: [HealthRecord],
+        in records: [HealthRecordProtocol],
         expectedFrequency: DataFrequency
     ) -> [DateRange]
 }

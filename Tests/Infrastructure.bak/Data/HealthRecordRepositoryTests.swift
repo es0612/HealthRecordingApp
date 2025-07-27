@@ -18,7 +18,7 @@ struct HealthRecordRepositoryTests {
     }
     
     private func createTestHealthRecord(user: User, type: HealthDataType = .weight, value: Double = 70.0) -> HealthRecord {
-        let record = HealthRecord(type: type, value: value, unit: type.displayName, source: .healthKit)
+        let record = HealthRecord(type: type, value: value, unit: type.unit, source: .healthKit)
         record.user = user
         return record
     }

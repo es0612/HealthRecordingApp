@@ -10,7 +10,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
     
     // MARK: - Core Trend Analysis
     
-    func analyzeTrends(from records: [HealthRecord], timeRange: TimeRange) async throws -> TrendAnalysis {
+    func analyzeTrends(from records: [HealthRecordProtocol], timeRange: TimeRange) async throws -> TrendAnalysis {
         let startTime = Date()
         
         guard !records.isEmpty else {
@@ -52,8 +52,12 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
             // Calculate confidence based on data quality and correlation strength
             let confidence = calculateConfidence(regression: regression, dataQuality: assessDataQuality(records: sortedRecords))
             
+            guard let firstRecord = sortedRecords.first else {
+                throw ValidationError.invalidInput("TrendAnalyzer", value: "empty_sorted_data", reason: "Sorted records became empty unexpectedly")
+            }
+            
             let analysis = TrendAnalysis(
-                dataType: sortedRecords.first!.type,
+                dataType: firstRecord.type,
                 timeRange: dateRange,
                 trendPoints: trendPoints,
                 direction: direction,
@@ -67,7 +71,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
             let duration = Date().timeIntervalSince(startTime)
             logger.logPerformance("trend_analysis", duration: duration, success: true)
             logger.info("Trend analysis completed", context: [
-                "data_type": sortedRecords.first!.type.rawValue,
+                "data_type": firstRecord.type.rawValue,
                 "records_count": sortedRecords.count,
                 "direction": direction.rawValue,
                 "confidence": confidence
@@ -83,7 +87,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         }
     }
     
-    func analyzeTrends(from records: [HealthRecord], dateRange: DateRange) async throws -> TrendAnalysis {
+    func analyzeTrends(from records: [HealthRecordProtocol], dateRange: DateRange) async throws -> TrendAnalysis {
         let startTime = Date()
         
         guard !records.isEmpty else {
@@ -115,8 +119,12 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
             let summary = calculateTrendSummary(from: sortedRecords)
             let confidence = calculateConfidence(regression: regression, dataQuality: assessDataQuality(records: sortedRecords))
             
+            guard let firstRecord = sortedRecords.first else {
+                throw ValidationError.invalidInput("TrendAnalyzer", value: "empty_sorted_data", reason: "Sorted records became empty unexpectedly")
+            }
+            
             let analysis = TrendAnalysis(
-                dataType: sortedRecords.first!.type,
+                dataType: firstRecord.type,
                 timeRange: dateRange,
                 trendPoints: trendPoints,
                 direction: direction,
@@ -190,7 +198,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
     
     // MARK: - Anomaly Detection
     
-    func detectAnomalies(in records: [HealthRecord], sensitivity: Double) async throws -> [AnomalyPoint] {
+    func detectAnomalies(in records: [HealthRecordProtocol], sensitivity: Double) async throws -> [AnomalyPoint] {
         guard records.count >= 3 else {
             return []
         }
@@ -251,7 +259,9 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
             throw ValidationError.invalidInput("Days ahead must be positive", value: "\(daysAhead)", reason: "Prediction requires positive number of days")
         }
         
-        let lastPoint = analysis.trendPoints.last!
+        guard let lastPoint = analysis.trendPoints.last else {
+            throw ValidationError.invalidInput("TrendAnalyzer", value: "empty_trend_points", reason: "Cannot predict from empty trend points")
+        }
         var predictedPoints: [TrendPoint] = []
         
         // Use linear regression for prediction
@@ -288,7 +298,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         return prediction
     }
     
-    func predictValue(from records: [HealthRecord], daysAhead: Int, method: PredictionMethod) async throws -> Double {
+    func predictValue(from records: [HealthRecordProtocol], daysAhead: Int, method: PredictionMethod) async throws -> Double {
         guard !records.isEmpty else {
             throw ValidationError.invalidInput("Records cannot be empty", value: "\(records.count)", reason: "Empty record set provided for analysis")
         }
@@ -304,16 +314,16 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         case .exponentialSmoothing:
             let alpha = 0.3
             let ema = calculateExponentialMovingAverage(values: values, alpha: alpha)
-            return ema.last ?? values.last!
+            return ema.last ?? (values.last ?? 0.0)
             
         case .movingAverage:
             let windowSize = min(7, values.count)
             let ma = calculateMovingAverage(values: values, windowSize: windowSize)
-            return ma.last ?? values.last!
+            return ma.last ?? (values.last ?? 0.0)
             
         case .seasonalDecomposition:
             // Simplified seasonal prediction - in a real implementation, this would be more complex
-            return values.last!
+            return values.last ?? 0.0
         }
     }
     
@@ -388,7 +398,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         let coefficientOfVariation = mean == 0 ? 0 : standardDeviation / abs(mean)
         
         let sortedValues = values.sorted()
-        let range = sortedValues.last! - sortedValues.first!
+        let range = (sortedValues.last ?? 0) - (sortedValues.first ?? 0)
         
         // Calculate IQR
         let q1Index = Int(Double(values.count) * 0.25)
@@ -445,7 +455,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
     
     // MARK: - Data Quality Assessment
     
-    func assessDataQuality(records: [HealthRecord]) -> DataQualityAssessment {
+    func assessDataQuality(records: [HealthRecordProtocol]) -> DataQualityAssessment {
         guard !records.isEmpty else {
             return DataQualityAssessment(
                 completeness: 0,
@@ -532,7 +542,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         )
     }
     
-    func identifyDataGaps(in records: [HealthRecord], expectedFrequency: DataFrequency) -> [DateRange] {
+    func identifyDataGaps(in records: [HealthRecordProtocol], expectedFrequency: DataFrequency) -> [DateRange] {
         guard records.count >= 2 else {
             return []
         }
@@ -579,11 +589,11 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
 
 private extension TrendAnalyzer {
     
-    func filterRecords(_ records: [HealthRecord], in dateRange: DateRange) -> [HealthRecord] {
+    func filterRecords(_ records: [HealthRecordProtocol], in dateRange: DateRange) -> [HealthRecordProtocol] {
         return records.filter { dateRange.contains($0.timestamp) }
     }
     
-    func determineOptimalWindowSize(for records: [HealthRecord]) -> Int {
+    func determineOptimalWindowSize(for records: [HealthRecordProtocol]) -> Int {
         let recordCount = records.count
         
         if recordCount <= 7 {
@@ -597,7 +607,7 @@ private extension TrendAnalyzer {
         }
     }
     
-    func calculateTrendPoints(from records: [HealthRecord], windowSize: Int) async throws -> [TrendPoint] {
+    func calculateTrendPoints(from records: [HealthRecordProtocol], windowSize: Int) async throws -> [TrendPoint] {
         let values = records.map { $0.value }
         let movingAverages = calculateMovingAverage(values: values, windowSize: windowSize)
         
@@ -617,7 +627,7 @@ private extension TrendAnalyzer {
         return points
     }
     
-    func calculateTrendSummary(from records: [HealthRecord]) -> TrendSummary {
+    func calculateTrendSummary(from records: [HealthRecordProtocol]) -> TrendSummary {
         guard !records.isEmpty else {
             return TrendSummary(
                 totalDataPoints: 0,
@@ -634,14 +644,14 @@ private extension TrendAnalyzer {
         let values = records.map { $0.value }
         let totalDataPoints = records.count
         let averageValue = values.reduce(0, +) / Double(values.count)
-        let minimumValue = values.min()!
-        let maximumValue = values.max()!
+        let minimumValue = values.min() ?? 0.0
+        let maximumValue = values.max() ?? 0.0
         
         let variance = values.reduce(0) { $0 + pow($1 - averageValue, 2) } / Double(values.count - 1)
         let standardDeviation = sqrt(variance)
         
-        let firstValue = values.first!
-        let lastValue = values.last!
+        let firstValue = values.first ?? 0.0
+        let lastValue = values.last ?? 0.0
         let changePercentage = firstValue == 0 ? 0 : ((lastValue - firstValue) / firstValue) * 100
         
         return TrendSummary(

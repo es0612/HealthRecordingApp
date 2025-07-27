@@ -6,50 +6,12 @@ import SwiftData
 @Suite("TrendAnalyzer Tests")
 struct TrendAnalyzerTests {
     
-    private func createTestHealthRecords() -> [HealthRecord] {
-        let records = [
-            HealthRecord(type: .weight, value: 70.0, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 69.5, unit: "kg", source: .manual),
-            HealthRecord(type: .weight, value: 69.0, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 68.8, unit: "kg", source: .manual),
-            HealthRecord(type: .weight, value: 68.5, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 68.2, unit: "kg", source: .manual),
-            HealthRecord(type: .weight, value: 68.0, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 67.8, unit: "kg", source: .manual),
-            HealthRecord(type: .weight, value: 67.5, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 67.2, unit: "kg", source: .manual)
-        ]
-        
-        // Set timestamps with 1-day intervals
-        let baseDate = Calendar.current.date(byAdding: .day, value: -10, to: Date())!
-        for (index, record) in records.enumerated() {
-            record.timestamp = Calendar.current.date(byAdding: .day, value: index, to: baseDate)!
-        }
-        
-        return records
+    private func createTestHealthRecords() -> [TestHealthRecordInterface] {
+        return TestHealthDataFactory.createTestHealthRecords()
     }
     
-    private func createTestRecordsWithAnomalies() -> [HealthRecord] {
-        let records = [
-            HealthRecord(type: .weight, value: 70.0, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 69.8, unit: "kg", source: .manual),
-            HealthRecord(type: .weight, value: 69.5, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 75.0, unit: "kg", source: .manual), // Anomaly
-            HealthRecord(type: .weight, value: 69.2, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 69.0, unit: "kg", source: .manual),
-            HealthRecord(type: .weight, value: 65.0, unit: "kg", source: .healthKit), // Anomaly
-            HealthRecord(type: .weight, value: 68.5, unit: "kg", source: .manual),
-            HealthRecord(type: .weight, value: 68.3, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 68.0, unit: "kg", source: .manual)
-        ]
-        
-        // Set timestamps with 1-day intervals
-        let baseDate = Calendar.current.date(byAdding: .day, value: -10, to: Date())!
-        for (index, record) in records.enumerated() {
-            record.timestamp = Calendar.current.date(byAdding: .day, value: index, to: baseDate)!
-        }
-        
-        return records
+    private func createTestRecordsWithAnomalies() -> [TestHealthRecordInterface] {
+        return TestHealthDataFactory.createTestRecordsWithAnomalies()
     }
     
     private func createTestAnalyzer() -> TrendAnalyzer {
@@ -189,7 +151,7 @@ struct TrendAnalyzerTests {
     func testAnalyzeTrendsEmpty() async throws {
         // Given
         let analyzer = createTestAnalyzer()
-        let records: [HealthRecord] = []
+        let records: [TestHealthRecordInterface] = []
         let timeRange = TimeRange.week
         
         // When & Then
@@ -451,19 +413,18 @@ struct TrendAnalyzerTests {
     func testLargeDataSetPerformance() async throws {
         // Given
         let analyzer = createTestAnalyzer()
-        var largeRecordSet: [HealthRecord] = []
         let baseDate = Calendar.current.date(byAdding: .year, value: -1, to: Date())!
         
         // Create 365 records (1 year of daily data)
-        for i in 0..<365 {
-            let record = HealthRecord(
+        let largeRecordSet: [TestHealthRecordInterface] = (0..<365).map { i in
+            var mockRecord = MockHealthRecord(
                 type: .weight,
                 value: 70.0 + sin(Double(i) * 0.1) * 2.0, // Simulate weight fluctuation
                 unit: "kg",
                 source: .healthKit
             )
-            record.timestamp = Calendar.current.date(byAdding: .day, value: i, to: baseDate)!
-            largeRecordSet.append(record)
+            mockRecord.timestamp = Calendar.current.date(byAdding: .day, value: i, to: baseDate)!
+            return mockRecord.toHealthRecord()
         }
         
         // When - Measure performance
@@ -483,8 +444,9 @@ struct TrendAnalyzerTests {
     func testSingleDataPoint() async throws {
         // Given
         let analyzer = createTestAnalyzer()
-        let singleRecord = [HealthRecord(type: .weight, value: 70.0, unit: "kg", source: .healthKit)]
-        singleRecord[0].timestamp = Date()
+        var mockRecord = MockHealthRecord(type: .weight, value: 70.0, unit: "kg", source: .healthKit)
+        mockRecord.timestamp = Date()
+        let singleRecord = [mockRecord.toHealthRecord()]
         
         // When & Then
         do {
@@ -499,13 +461,11 @@ struct TrendAnalyzerTests {
     func testIdenticalValues() async throws {
         // Given
         let analyzer = createTestAnalyzer()
-        let identicalRecords = (0..<10).map { _ in
-            HealthRecord(type: .weight, value: 70.0, unit: "kg", source: .healthKit)
-        }
-        
         let baseDate = Calendar.current.date(byAdding: .day, value: -10, to: Date())!
-        for (index, record) in identicalRecords.enumerated() {
-            record.timestamp = Calendar.current.date(byAdding: .day, value: index, to: baseDate)!
+        let identicalRecords = (0..<10).map { index in
+            var mockRecord = MockHealthRecord(type: .weight, value: 70.0, unit: "kg", source: .healthKit)
+            mockRecord.timestamp = Calendar.current.date(byAdding: .day, value: index, to: baseDate)!
+            return mockRecord.toHealthRecord()
         }
         
         // When
