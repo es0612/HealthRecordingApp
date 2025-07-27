@@ -24,7 +24,9 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         do {
             // Filter records by time range
             let endDate = Date()
-            let startDate = Calendar.current.date(byAdding: .day, value: -timeRange.days, to: endDate)!
+            guard let startDate = Calendar.current.date(byAdding: .day, value: -timeRange.days, to: endDate) else {
+                throw ValidationError.invalidInput("TrendAnalyzer", value: "date_calculation", reason: "Unable to calculate start date from time range")
+            }
             let dateRange = try DateRange(startDate: startDate, endDate: endDate)
             let filteredRecords = filterRecords(records, in: dateRange)
             
@@ -266,7 +268,9 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         
         // Use linear regression for prediction
         for day in 1...daysAhead {
-            let futureTimestamp = Calendar.current.date(byAdding: .day, value: day, to: lastPoint.timestamp)!
+            guard let futureTimestamp = Calendar.current.date(byAdding: .day, value: day, to: lastPoint.timestamp) else {
+                throw ValidationError.invalidInput("TrendAnalyzer", value: "future_date_calculation", reason: "Unable to calculate future timestamp for prediction")
+            }
             let predictedValue = lastPoint.value + analysis.slope * Double(day)
             
             let point = TrendPoint(
@@ -281,12 +285,16 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         // Calculate prediction confidence based on historical accuracy
         let confidence = max(0.1, min(0.9, analysis.confidence * 0.8)) // Reduce confidence for predictions
         
+        guard let validUntilDate = Calendar.current.date(byAdding: .day, value: daysAhead, to: Date()) else {
+            throw ValidationError.invalidInput("TrendAnalyzer", value: "valid_until_calculation", reason: "Unable to calculate validity end date for prediction")
+        }
+        
         let prediction = TrendPrediction(
             dataType: analysis.dataType,
             predictedPoints: predictedPoints,
             confidence: confidence,
             methodology: "Linear Regression",
-            validUntil: Calendar.current.date(byAdding: .day, value: daysAhead, to: Date())!
+            validUntil: validUntilDate
         )
         
         logger.info("Trend prediction completed", context: [
@@ -516,7 +524,18 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         }
         
         // Assess timeliness (data recency)
-        let latestRecord = records.max { $0.timestamp < $1.timestamp }!
+        guard let latestRecord = records.max(by: { $0.timestamp < $1.timestamp }) else {
+            // This should not happen since we already checked for empty records, but safety first
+            let timeliness = 0.0
+            return DataQualityAssessment(
+                completeness: completeness,
+                consistency: consistency,
+                accuracy: accuracy,
+                timeliness: timeliness,
+                overallScore: (completeness + consistency + accuracy + timeliness) / 4.0,
+                issues: issues
+            )
+        }
         let daysSinceLatest = Date().timeIntervalSince(latestRecord.timestamp) / (24 * 60 * 60)
         let timeliness = max(0.0, 1.0 - daysSinceLatest / 30.0) // Penalize data older than 30 days
         
@@ -569,10 +588,12 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
             
             if gap > expectedInterval * 1.5 { // Allow 50% tolerance
                 do {
-                    let gapRange = try DateRange(
-                        startDate: Calendar.current.date(byAdding: .day, value: 1, to: currentRecord.timestamp)!,
-                        endDate: Calendar.current.date(byAdding: .day, value: -1, to: nextRecord.timestamp)!
-                    )
+                    guard let gapStartDate = Calendar.current.date(byAdding: .day, value: 1, to: currentRecord.timestamp),
+                          let gapEndDate = Calendar.current.date(byAdding: .day, value: -1, to: nextRecord.timestamp) else {
+                        // Skip if date calculation fails
+                        continue
+                    }
+                    let gapRange = try DateRange(startDate: gapStartDate, endDate: gapEndDate)
                     gaps.append(gapRange)
                 } catch {
                     // Skip invalid gap ranges

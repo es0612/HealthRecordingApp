@@ -127,7 +127,9 @@ final class GoalTracker: GoalTrackerProtocol {
         
         for i in 1...milestoneCount {
             let targetValue: Double
-            let targetDate = Calendar.current.date(byAdding: .day, value: Int(dayInterval * Double(i)), to: goal.createdAt)!
+            guard let targetDate = Calendar.current.date(byAdding: .day, value: Int(dayInterval * Double(i)), to: goal.createdAt) else {
+                continue // Skip this milestone if date calculation fails
+            }
             
             switch strategy {
             case .linear:
@@ -631,9 +633,21 @@ final class GoalTracker: GoalTrackerProtocol {
         
         // Calculate time-based engagement
         let now = Date()
-        let oneDayAgo = Calendar.current.date(byAdding: .day, value: -1, to: now)!
-        let oneWeekAgo = Calendar.current.date(byAdding: .day, value: -7, to: now)!
-        let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: now)!
+        guard let oneDayAgo = Calendar.current.date(byAdding: .day, value: -1, to: now),
+              let oneWeekAgo = Calendar.current.date(byAdding: .day, value: -7, to: now),
+              let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: now) else {
+            return GoalEngagementMetrics(
+                goalId: goal.id,
+                overallEngagement: overallEngagement,
+                dailyEngagement: 0.0,
+                weeklyEngagement: 0.0,
+                monthlyEngagement: 0.0,
+                engagementTrend: .stable,
+                activityFrequency: 0.0,
+                sessionDuration: activities.reduce(0) { $0 + $1.duration } / Double(max(1, activities.count)),
+                completionRate: 0.0
+            )
+        }
         
         let dailyActivities = activities.filter { $0.timestamp >= oneDayAgo }
         let weeklyActivities = activities.filter { $0.timestamp >= oneWeekAgo }
@@ -760,13 +774,19 @@ final class GoalTracker: GoalTrackerProtocol {
             // Need more time
             adjustmentType = .extend
             let additionalDays = Int((requiredDailyProgress * Double(currentProgress.remainingDays) / historicalDailyProgress) - Double(currentProgress.remainingDays))
-            suggestedDeadline = Calendar.current.date(byAdding: .day, value: additionalDays, to: goal.deadline)!
+            guard let newDeadline = Calendar.current.date(byAdding: .day, value: additionalDays, to: goal.deadline) else {
+                throw ValidationError.invalidInput("GoalTracker", value: "deadline_extension", reason: "Unable to calculate extended deadline")
+            }
+            suggestedDeadline = newDeadline
             reasoning = "現在のペース（日々\(String(format: "%.1f", historicalDailyProgress))）を考慮すると、\(additionalDays)日の延長が推奨されます。"
         } else if historicalDailyProgress > requiredDailyProgress * 1.5 {
             // Can finish earlier
             adjustmentType = .compress
             let daysToReduce = Int(Double(currentProgress.remainingDays) - (1.0 - currentProgress.progress) / historicalDailyProgress)
-            suggestedDeadline = Calendar.current.date(byAdding: .day, value: -Int(daysToReduce), to: goal.deadline)!
+            guard let newDeadline = Calendar.current.date(byAdding: .day, value: -Int(daysToReduce), to: goal.deadline) else {
+                throw ValidationError.invalidInput("GoalTracker", value: "deadline_compression", reason: "Unable to calculate compressed deadline")
+            }
+            suggestedDeadline = newDeadline
             reasoning = "順調な進捗により、\(daysToReduce)日早く完了できる可能性があります。"
         } else {
             // Current timeline is appropriate
@@ -1326,33 +1346,39 @@ private extension GoalTracker {
         // Optimistic scenario
         let optimisticVelocity = historicalVelocity * 1.5
         let optimisticDays = Int((1.0 - currentProgress) / optimisticVelocity)
-        scenarios.append(CompletionScenario(
-            name: "楽観的シナリオ",
-            probability: 0.3,
-            description: "順調に進捗が加速した場合",
-            completionDate: Calendar.current.date(byAdding: .day, value: optimisticDays, to: Date())!,
-            requiredChanges: ["毎日の記録継続", "習慣の最適化"]
-        ))
+        if let optimisticDate = Calendar.current.date(byAdding: .day, value: optimisticDays, to: Date()) {
+            scenarios.append(CompletionScenario(
+                name: "楽観的シナリオ",
+                probability: 0.3,
+                description: "順調に進捗が加速した場合",
+                completionDate: optimisticDate,
+                requiredChanges: ["毎日の記録継続", "習慣の最適化"]
+            ))
+        }
         
         // Realistic scenario
         let realisticDays = historicalVelocity > 0 ? Int((1.0 - currentProgress) / historicalVelocity) : remainingDays * 2
-        scenarios.append(CompletionScenario(
-            name: "現実的シナリオ",
-            probability: 0.5,
-            description: "現在のペースを維持した場合",
-            completionDate: Calendar.current.date(byAdding: .day, value: realisticDays, to: Date())!,
-            requiredChanges: ["現在の習慣継続"]
-        ))
+        if let realisticDate = Calendar.current.date(byAdding: .day, value: realisticDays, to: Date()) {
+            scenarios.append(CompletionScenario(
+                name: "現実的シナリオ",
+                probability: 0.5,
+                description: "現在のペースを維持した場合",
+                completionDate: realisticDate,
+                requiredChanges: ["現在の習慣継続"]
+            ))
+        }
         
         // Conservative scenario
         let conservativeDays = remainingDays + (remainingDays / 2)
-        scenarios.append(CompletionScenario(
-            name: "保守的シナリオ",
-            probability: 0.2,
-            description: "予期しない障害が発生した場合",
-            completionDate: Calendar.current.date(byAdding: .day, value: conservativeDays, to: Date())!,
-            requiredChanges: ["目標の再調整", "サポート体制の強化"]
-        ))
+        if let conservativeDate = Calendar.current.date(byAdding: .day, value: conservativeDays, to: Date()) {
+            scenarios.append(CompletionScenario(
+                name: "保守的シナリオ",
+                probability: 0.2,
+                description: "予期しない障害が発生した場合",
+                completionDate: conservativeDate,
+                requiredChanges: ["目標の再調整", "サポート体制の強化"]
+            ))
+        }
         
         return scenarios
     }

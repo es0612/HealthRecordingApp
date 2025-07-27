@@ -459,7 +459,9 @@ final class InsightEngine: InsightEngineProtocol {
         let recommendedActions = generateRecommendedActions(for: identifiedRisks)
         
         // Calculate next review date
-        let nextReviewDate = Calendar.current.date(byAdding: .day, value: 30, to: Date())!
+        guard let nextReviewDate = Calendar.current.date(byAdding: .day, value: 30, to: Date()) else {
+            throw ValidationError.invalidInput("InsightEngine", value: "next_review_date", reason: "Unable to calculate next review date")
+        }
         
         return HealthRiskAssessment(
             userId: user.id,
@@ -1087,17 +1089,18 @@ final class InsightEngine: InsightEngineProtocol {
         // Generate recommendations based on changes
         let recommendations = generateBaselineChangeRecommendations(from: changes)
         
+        guard let baselineStart = historicalBaseline.map({ $0.timestamp }).min(),
+              let baselineEnd = historicalBaseline.map({ $0.timestamp }).max(),
+              let currentStart = currentData.map({ $0.timestamp }).min(),
+              let currentEnd = currentData.map({ $0.timestamp }).max() else {
+            throw ValidationError.invalidInput("InsightEngine", value: "date_range_calculation", reason: "Unable to determine date ranges from baseline and current data")
+        }
+        
         return BaselineComparisonAnalysis(
             userId: UUID(), // Would be passed in real implementation
             comparisonDate: Date(),
-            baselinePeriod: DateRange(
-                start: historicalBaseline.map { $0.timestamp }.min()!,
-                end: historicalBaseline.map { $0.timestamp }.max()!
-            ),
-            currentPeriod: DateRange(
-                start: currentData.map { $0.timestamp }.min()!,
-                end: currentData.map { $0.timestamp }.max()!
-            ),
+            baselinePeriod: DateRange(start: baselineStart, end: baselineEnd),
+            currentPeriod: DateRange(start: currentStart, end: currentEnd),
             detectedChanges: changes,
             changeDetectionSensitivity: changeDetectionSensitivity,
             insights: insights,
@@ -1354,7 +1357,7 @@ private extension InsightEngine {
                 return calendar.dateInterval(of: .month, for: record.timestamp)?.start ?? record.timestamp
             case .quarterly:
                 let quarter = (calendar.component(.month, from: record.timestamp) - 1) / 3
-                return calendar.date(from: DateComponents(year: calendar.component(.year, from: record.timestamp), month: quarter * 3 + 1, day: 1))!
+                return calendar.date(from: DateComponents(year: calendar.component(.year, from: record.timestamp), month: quarter * 3 + 1, day: 1)) ?? record.timestamp
             case .yearly:
                 return calendar.dateInterval(of: .year, for: record.timestamp)?.start ?? record.timestamp
             }
@@ -1370,7 +1373,7 @@ private extension InsightEngine {
                 return calendar.dateInterval(of: .month, for: record.timestamp)?.start ?? record.timestamp
             case .quarterly:
                 let quarter = (calendar.component(.month, from: record.timestamp) - 1) / 3
-                return calendar.date(from: DateComponents(year: calendar.component(.year, from: record.timestamp), month: quarter * 3 + 1, day: 1))!
+                return calendar.date(from: DateComponents(year: calendar.component(.year, from: record.timestamp), month: quarter * 3 + 1, day: 1)) ?? record.timestamp
             case .yearly:
                 return calendar.dateInterval(of: .year, for: record.timestamp)?.start ?? record.timestamp
             }
@@ -1784,8 +1787,9 @@ private extension InsightEngine {
     func calculateAmplitude(values: [Double]) -> Double {
         guard !values.isEmpty else { return 0.0 }
         
-        let max = values.max()!
-        let min = values.min()!
+        guard let max = values.max(), let min = values.min() else {
+            return 0.0 // Safety fallback for unexpected nil values
+        }
         return (max - min) / 2.0
     }
     
