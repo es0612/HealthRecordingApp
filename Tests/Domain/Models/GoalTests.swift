@@ -77,16 +77,21 @@ struct GoalTests {
     
     @Test("Goal should check if expired")
     func testGoalExpiration() async throws {
-        // Given
-        let pastDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        // Given - create goal with future date first
         let futureDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        let activeGoal = try Goal(type: .weight, targetValue: 65.0, deadline: futureDate)
         
         // When & Then
-        let expiredGoal = try Goal(type: .weight, targetValue: 65.0, deadline: pastDate)
-        #expect(expiredGoal.isExpired == true)
-        
-        let activeGoal = try Goal(type: .weight, targetValue: 65.0, deadline: futureDate)
         #expect(activeGoal.isExpired == false)
+        
+        // Test expired logic by creating goal with very short deadline
+        let shortFuture = Calendar.current.date(byAdding: .second, value: 1, to: Date())!
+        let soonToExpireGoal = try Goal(type: .weight, targetValue: 65.0, deadline: shortFuture)
+        
+        // Wait for expiration
+        try await Task.sleep(nanoseconds: 1_100_000_000) // 1.1 seconds
+        
+        #expect(soonToExpireGoal.isExpired == true)
     }
     
     @Test("Goal should update current value from health records")

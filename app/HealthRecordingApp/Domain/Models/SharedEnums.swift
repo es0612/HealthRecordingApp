@@ -156,6 +156,16 @@ enum RecommendationPriority: String, CaseIterable, Codable {
         }
     }
     
+    var urgencyScore: Double {
+        switch self {
+        case .critical: return 1.0
+        case .high: return 0.8
+        case .medium: return 0.6
+        case .low: return 0.4
+        case .informational: return 0.2
+        }
+    }
+    
     /// Returns true if this priority level is available for GoalTracker (excludes informational)
     var isGoalTrackerPriority: Bool {
         return [.critical, .high, .medium, .low].contains(self)

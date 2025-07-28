@@ -17,9 +17,7 @@ struct DemographicFilter: Codable {
     let placeholder: String = "stub"
 }
 
-struct PopulationComparisonResult: Codable {
-    let placeholder: String = "stub"
-}
+// PopulationComparisonResult moved to InsightEngineModels.swift
 
 struct PopulationDatabase: Codable {
     let placeholder: String = "stub"

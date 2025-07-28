@@ -14,7 +14,8 @@ func testHealthDataType() async throws {
     // Test basic enum functionality
     let weightType = HealthDataType.weight
     #expect(weightType.rawValue == "weight")
-    #expect(weightType.displayName == "kg")
+    #expect(weightType.displayName == "体重")
+    #expect(weightType.unit == "kg")
 }
 
 @Test("Test DataSource enum")

@@ -60,9 +60,12 @@ final class Goal {
     }
     
     var remainingDays: Int {
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.day], from: Date(), to: deadline)
-        return max(0, components.day ?? 0)
+        let now = Date()
+        let timeInterval = deadline.timeIntervalSince(now)
+        
+        // Convert to days, allowing negative values for expired goals
+        let days = Int(ceil(timeInterval / (24 * 60 * 60)))
+        return days
     }
     
     // MARK: - Methods

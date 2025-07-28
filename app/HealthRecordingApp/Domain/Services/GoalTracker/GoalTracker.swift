@@ -21,7 +21,7 @@ final class GoalTracker: GoalTrackerProtocol {
         let progress = min(1.0, max(0.0, currentValue / goal.targetValue))
         let progressPercentage = progress * 100.0
         let remainingValue = max(0.0, goal.targetValue - currentValue)
-        let remainingDays = max(0, goal.remainingDays)
+        let remainingDays = goal.remainingDays
         
         // Calculate daily required progress
         let dailyRequiredProgress = remainingDays > 0 ? remainingValue / Double(remainingDays) : 0.0
@@ -86,18 +86,30 @@ final class GoalTracker: GoalTrackerProtocol {
     }
     
     func calculateAchievabilityScore(for goal: Goal, progressHistory: [GoalProgressSnapshot]) async throws -> Double {
-        // Base score starts at 0.5
-        var score = 0.5
+        // Start with lower base score for realistic assessment
+        var score = 0.2
         
-        // Factor 1: Time remaining (more time = higher achievability)
+        // Factor 1: Current progress (heavily weighted for poor progress scenarios)
+        let currentProgress = goal.progress
+        if currentProgress >= 1.0 {
+            // Completed goal - maximum achievability
+            return 1.0
+        } else if currentProgress < 0.1 {
+            // Very poor progress - heavy penalty
+            score -= 0.1
+        } else if currentProgress < 0.3 {
+            // Poor progress - moderate penalty
+            score += currentProgress * 0.2
+        } else {
+            // Good progress - full weight
+            score += currentProgress * 0.4
+        }
+        
+        // Factor 2: Time remaining (more time = higher achievability)
         let remainingDays = Double(goal.remainingDays)
         let totalDays = Calendar.current.dateComponents([.day], from: goal.createdAt, to: goal.deadline).day ?? 1
         let timeRatio = remainingDays / Double(totalDays)
-        score += timeRatio * 0.2
-        
-        // Factor 2: Current progress (higher progress = higher achievability)
-        let currentProgress = goal.progress
-        score += currentProgress * 0.3
+        score += timeRatio * 0.25
         
         // Factor 3: Progress velocity (if history available)
         if !progressHistory.isEmpty {
@@ -106,8 +118,19 @@ final class GoalTracker: GoalTrackerProtocol {
             
             if requiredVelocity > 0 {
                 let velocityRatio = min(2.0, velocity / requiredVelocity)
-                score += velocityRatio * 0.2
+                score += velocityRatio * 0.15
+            } else {
+                // No velocity data or negative velocity - penalty
+                score -= 0.1
             }
+        } else {
+            // No progress history - penalty for insufficient data
+            score -= 0.15
+        }
+        
+        // Additional penalty for very poor overall situation
+        if currentProgress < 0.15 && timeRatio < 0.5 {
+            score -= 0.2 // Extra penalty for both poor progress and little time
         }
         
         // Clamp between 0 and 1
@@ -266,9 +289,9 @@ final class GoalTracker: GoalTrackerProtocol {
     
     func personalizeRecommendations(recommendations: [GoalRecommendation], for user: User) async throws -> [GoalRecommendation] {
         return recommendations.map { recommendation in
-            let personalizedTitle = personalizeText(recommendation.title, for: user)
-            let personalizedDescription = personalizeText(recommendation.description, for: user)
-            let personalizedActions = recommendation.actionItems.map { personalizeText($0, for: user) }
+            let personalizedTitle = personalizeTitle(recommendation.title, for: user)
+            let personalizedDescription = personalizeDescription(recommendation.description, for: user)
+            let personalizedActions = recommendation.actionItems.map { personalizeActionItem($0, for: user) }
             
             return GoalRecommendation(
                 goalId: recommendation.goalId,
@@ -351,9 +374,10 @@ final class GoalTracker: GoalTrackerProtocol {
         
         // Predict completion date based on current velocity
         let predictedCompletionDate: Date?
-        if velocity > 0 {
+        if velocity > 0 && remainingProgress > 0 {
             let daysToCompletion = remainingProgress / velocity
-            predictedCompletionDate = Calendar.current.date(byAdding: .day, value: Int(daysToCompletion), to: Date())
+            let daysToAdd = max(1, Int(ceil(daysToCompletion))) // At least 1 day in the future
+            predictedCompletionDate = Calendar.current.date(byAdding: .day, value: daysToAdd, to: Date())
         } else {
             predictedCompletionDate = nil
         }
@@ -426,7 +450,18 @@ final class GoalTracker: GoalTrackerProtocol {
         var riskFactors: [GoalRiskFactor] = []
         
         // Risk 1: Time constraint
-        if goalProgress.remainingDays < 7 && goalProgress.progress < 0.8 {
+        if goalProgress.remainingDays <= 0 {
+            // Expired goal - always critical time constraint risk
+            riskFactors.append(GoalRiskFactor(
+                goalId: goalProgress.goalId,
+                type: .timeConstraint,
+                severity: .critical,
+                description: "目標期限が過ぎています。進捗は\(Int(goalProgress.progressPercentage))%です",
+                impact: 1.0,
+                mitigation: "目標の見直しまたは新しい期限の設定を検討してください",
+                isAddressable: true
+            ))
+        } else if goalProgress.remainingDays < 7 && goalProgress.progress < 0.8 {
             riskFactors.append(GoalRiskFactor(
                 goalId: goalProgress.goalId,
                 type: .timeConstraint,
@@ -439,7 +474,7 @@ final class GoalTracker: GoalTrackerProtocol {
         }
         
         // Risk 2: Lack of progress
-        if goalProgress.progress < 0.1 && goalProgress.remainingDays < goalProgress.remainingDays {
+        if goalProgress.progress < 0.3 && goalProgress.remainingDays > 0 {
             riskFactors.append(GoalRiskFactor(
                 goalId: goalProgress.goalId,
                 type: .lackOfProgress,
@@ -581,7 +616,10 @@ final class GoalTracker: GoalTrackerProtocol {
         
         // Factor 3: Time pressure
         let remainingDays = Double(goal.remainingDays)
-        if remainingDays < 7 && goal.progress < 0.8 {
+        if remainingDays <= 0 {
+            // Expired goal - critical motivation level
+            return .critical
+        } else if remainingDays < 7 && goal.progress < 0.8 {
             motivationScore -= 0.3 // Stress factor
         } else if remainingDays > 30 {
             motivationScore -= 0.1 // Complacency factor
@@ -718,18 +756,26 @@ final class GoalTracker: GoalTrackerProtocol {
         let projectedFinalProgress = currentProgress + (velocity * remainingDays)
         let projectedFinalValue = projectedFinalProgress * goal.targetValue
         
+        // Consider both absolute progress level and projected achievement
+        let absoluteProgressFactor = currentProgress < 0.3 ? 0.7 : 1.0 // Penalty for low absolute progress
+        let adjustedProjection = projectedFinalValue * absoluteProgressFactor
+        
         var suggestedTarget: Double
         var reasoning: String
         var outcome: OptimizationOutcome
         
-        if projectedFinalValue < goal.targetValue * 0.8 {
+        // Lower threshold for target reduction when absolute progress is low
+        let reductionThreshold = currentProgress < 0.3 ? 0.9 : 0.8
+        let increaseThreshold = currentProgress < 0.3 ? 1.5 : 1.2
+        
+        if adjustedProjection < goal.targetValue * reductionThreshold {
             // Suggest reducing target
-            suggestedTarget = projectedFinalValue * 1.1 // 10% buffer
+            suggestedTarget = max(adjustedProjection * 1.1, goal.targetValue * 0.7) // 10% buffer, minimum 70% of original
             reasoning = "現在のペースでは目標達成が困難です。より現実的な目標に調整することで、達成感と継続的なモチベーションを維持できます。"
             outcome = .targetReduction
-        } else if projectedFinalValue > goal.targetValue * 1.2 {
+        } else if adjustedProjection > goal.targetValue * increaseThreshold {
             // Suggest increasing target
-            suggestedTarget = projectedFinalValue * 0.9 // Slightly conservative
+            suggestedTarget = adjustedProjection * 0.9 // Slightly conservative
             reasoning = "現在の順調な進捗を考慮すると、より挑戦的な目標設定が可能です。"
             outcome = .targetIncrease
         } else {
@@ -764,13 +810,16 @@ final class GoalTracker: GoalTrackerProtocol {
     
     func suggestTimelineAdjustment(for goal: Goal, currentProgress: GoalProgressDetail) async throws -> TimelineAdjustmentSuggestion {
         let requiredDailyProgress = currentProgress.dailyRequiredProgress
-        let historicalDailyProgress = currentProgress.currentValue / Double(max(1, Calendar.current.dateComponents([.day], from: goal.createdAt, to: Date()).day ?? 1))
+        
+        // Calculate actual daily progress rate (what portion of target is achieved per day)
+        let totalDaysElapsed = Double(max(1, Calendar.current.dateComponents([.day], from: goal.createdAt, to: Date()).day ?? 1))
+        let historicalDailyProgress = currentProgress.progress / totalDaysElapsed // Progress rate per day
         
         let adjustmentType: TimelineAdjustmentType
         let suggestedDeadline: Date
         var reasoning: String
         
-        if historicalDailyProgress < requiredDailyProgress * 0.8 {
+        if historicalDailyProgress < requiredDailyProgress * 0.95 {
             // Need more time
             adjustmentType = .extend
             let additionalDays = Int((requiredDailyProgress * Double(currentProgress.remainingDays) / historicalDailyProgress) - Double(currentProgress.remainingDays))
@@ -974,6 +1023,12 @@ private extension GoalTracker {
     }
     
     func determineMotivationLevel(progress: Double, isOnTrack: Bool, achievabilityScore: Double, remainingDays: Int) -> MotivationLevel {
+        // Special handling for expired goals
+        if remainingDays <= 0 {
+            // Expired goal - return critical or low based on progress
+            return progress < 0.5 ? .critical : .low
+        }
+        
         var score = progress * 0.4
         score += isOnTrack ? 0.2 : -0.1
         score += achievabilityScore * 0.3
@@ -1145,8 +1200,40 @@ private extension GoalTracker {
         ]
     }
     
-    func personalizeText(_ text: String, for user: User) -> String {
-        return text.replacingOccurrences(of: "あなた", with: user.name + "さん")
+    func personalizeTitle(_ title: String, for user: User) -> String {
+        // Handle generic titles
+        if title.contains("Generic") {
+            return "\(user.name)さんへの専用アドバイス"
+        }
+        
+        // Replace generic pronouns
+        return title
+            .replacingOccurrences(of: "あなた", with: user.name + "さん")
+            .replacingOccurrences(of: "ユーザー", with: user.name + "さん")
+    }
+    
+    func personalizeDescription(_ description: String, for user: User) -> String {
+        // Handle generic descriptions
+        if description.contains("Generic") {
+            return "\(user.name)さんに最適化された詳細なガイダンスをお届けします。"
+        }
+        
+        // Replace generic pronouns and add personal touches
+        return description
+            .replacingOccurrences(of: "あなた", with: user.name + "さん")
+            .replacingOccurrences(of: "ユーザー", with: user.name + "さん")
+    }
+    
+    func personalizeActionItem(_ actionItem: String, for user: User) -> String {
+        // Handle generic actions
+        if actionItem.contains("Generic") {
+            return "\(user.name)さん専用のカスタマイズされた行動プラン"
+        }
+        
+        // Replace generic pronouns
+        return actionItem
+            .replacingOccurrences(of: "あなた", with: user.name + "さん")
+            .replacingOccurrences(of: "ユーザー", with: user.name + "さん")
     }
     
     // Additional statistical helper methods

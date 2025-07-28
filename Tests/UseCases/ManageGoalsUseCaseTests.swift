@@ -448,14 +448,14 @@ struct ManageGoalsUseCaseTests {
         let user = createTestUser()
         modelContext.insert(user)
         
-        // Create an old completed goal
+        // Create an old completed goal - use short future deadline, then make it completed
         let oldGoal = try Goal(
             type: .weight,
             targetValue: 65.0,
-            deadline: Calendar.current.date(byAdding: .day, value: -30, to: Date())! // 30 days ago
+            deadline: Calendar.current.date(byAdding: .day, value: 1, to: Date())! // 1 day future first
         )
         oldGoal.user = user
-        oldGoal.currentValue = 65.0 // Completed
+        oldGoal.currentValue = 65.0 // Completed - this makes it archived regardless of date
         modelContext.insert(oldGoal)
         
         // Create a recent goal

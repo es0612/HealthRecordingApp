@@ -59,10 +59,17 @@ struct TestHealthDataFactory {
             MockHealthRecord(type: .weight, value: 67.2, unit: "kg", source: .manual)
         ]
         
-        let baseDate = Calendar.current.date(byAdding: .day, value: -10, to: Date())!
+        guard let baseDate = Calendar.current.date(byAdding: .day, value: -10, to: Date()) else {
+            // Fallback to current date if calculation fails
+            return records.map { $0.toHealthRecord() }
+        }
+        
         return records.enumerated().map { index, record in
             var mutableRecord = record
-            mutableRecord.timestamp = Calendar.current.date(byAdding: .day, value: index, to: baseDate)!
+            if let adjustedDate = Calendar.current.date(byAdding: .day, value: index, to: baseDate) {
+                mutableRecord.timestamp = adjustedDate
+            }
+            // If date calculation fails, keep original timestamp
             return mutableRecord.toHealthRecord()
         }
     }
@@ -81,10 +88,17 @@ struct TestHealthDataFactory {
             MockHealthRecord(type: .weight, value: 68.0, unit: "kg", source: .manual)
         ]
         
-        let baseDate = Calendar.current.date(byAdding: .day, value: -10, to: Date())!
+        guard let baseDate = Calendar.current.date(byAdding: .day, value: -10, to: Date()) else {
+            // Fallback to current date if calculation fails
+            return records.map { $0.toHealthRecord() }
+        }
+        
         return records.enumerated().map { index, record in
             var mutableRecord = record
-            mutableRecord.timestamp = Calendar.current.date(byAdding: .day, value: index, to: baseDate)!
+            if let adjustedDate = Calendar.current.date(byAdding: .day, value: index, to: baseDate) {
+                mutableRecord.timestamp = adjustedDate
+            }
+            // If date calculation fails, keep original timestamp
             return mutableRecord.toHealthRecord()
         }
     }

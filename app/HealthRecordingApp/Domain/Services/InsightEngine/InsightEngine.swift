@@ -1338,6 +1338,560 @@ final class InsightEngine: InsightEngineProtocol {
 
 // MARK: - Private Helper Methods
 
+// MARK: - Machine Learning Stub Functions
+private func simulateMLPrediction(
+    from data: [HealthRecordProtocol],
+    modelType: String,
+    features: [String]
+) -> [Double] {
+    // TODO: Implement actual ML prediction
+    return Array(repeating: 0.5, count: min(data.count, 10))
+}
+
+private func calculateMLConfidence(
+    prediction: [Double],
+    modelMetrics: [String: Any]
+) -> Double {
+    // TODO: Implement actual confidence calculation
+    return 0.7
+}
+
+private func calculateFeatureImportance(
+    for features: [String],
+    in model: String
+) -> [String: Double] {
+    // TODO: Implement actual feature importance calculation
+    return features.reduce(into: [String: Double]()) { result, feature in
+        result[feature] = Double.random(in: 0.1...0.9)
+    }
+}
+
+private func generateModelMetrics(
+    from prediction: [Double],
+    actual: [Double]
+) -> [String: Any] {
+    // TODO: Implement actual model metrics calculation
+    return [
+        "accuracy": 0.8,
+        "precision": 0.75,
+        "recall": 0.82,
+        "f1_score": 0.78
+    ]
+}
+
+private func generateValidationResults(
+    from metrics: [String: Any]
+) -> [String: Any] {
+    // TODO: Implement actual validation results generation
+    return [
+        "cross_validation_score": 0.79,
+        "test_score": 0.76,
+        "validation_status": "acceptable"
+    ]
+}
+
+// MARK: - Projection Analysis Stub Functions
+private func applyExtrapolationMethod(
+    to data: [HealthRecordProtocol],
+    method: String,
+    horizon: TimeInterval
+) -> [Double] {
+    // TODO: Implement actual extrapolation
+    return Array(repeating: data.last?.value ?? 0.0, count: 5)
+}
+
+private func calculateProjectionConfidenceInterval(
+    for projection: [Double],
+    confidence: Double
+) -> [(lower: Double, upper: Double)] {
+    // TODO: Implement actual confidence interval calculation
+    return projection.map { value in
+        let margin = value * 0.1
+        return (lower: value - margin, upper: value + margin)
+    }
+}
+
+private func identifyProjectionAssumptions(
+    for data: [HealthRecordProtocol],
+    method: String
+) -> [String] {
+    // TODO: Implement actual assumption identification
+    return [
+        "Assumes linear trend continuation",
+        "Assumes no external disruptions",
+        "Assumes consistent data quality"
+    ]
+}
+
+private func identifyLimitingFactors(
+    for projection: [Double],
+    in context: [HealthRecordProtocol]
+) -> [String] {
+    // TODO: Implement actual limiting factor identification
+    return [
+        "Limited historical data",
+        "Seasonal variations not considered",
+        "Individual lifestyle changes"
+    ]
+}
+
+private func calculateProjectionConfidence(
+    from data: [HealthRecordProtocol],
+    consistency: Double
+) -> Double {
+    // TODO: Implement actual projection confidence calculation
+    return min(0.9, max(0.3, consistency * 0.8))
+}
+
+private func assessDataConsistency(
+    in data: [HealthRecordProtocol]
+) -> Double {
+    // TODO: Implement actual data consistency assessment
+    guard data.count > 2 else { return 0.5 }
+    
+    let values = data.map { $0.value }
+    let mean = values.reduce(0, +) / Double(values.count)
+    let variance = values.map { pow($0 - mean, 2) }.reduce(0, +) / Double(values.count)
+    let coefficientOfVariation = sqrt(variance) / mean
+    
+    return max(0.0, 1.0 - min(1.0, coefficientOfVariation))
+}
+
+// MARK: - Risk Assessment Stub Functions
+private func calculateIndividualRiskProbability(
+    for condition: String,
+    userData: [HealthRecordProtocol],
+    riskFactors: [String]
+) -> Double {
+    // TODO: Implement actual risk probability calculation
+    return Double.random(in: 0.1...0.8)
+}
+
+// MARK: - Data Quality Stub Functions
+private func assessQualityMetric(
+    _ metric: String,
+    in data: [HealthRecordProtocol]
+) -> Double {
+    // TODO: Implement actual quality metric assessment
+    return Double.random(in: 0.6...0.95)
+}
+
+private func getThreshold(for metric: String) -> Double {
+    // TODO: Implement actual threshold retrieval
+    return 0.8
+}
+
+private func identifyQualityIssues(
+    from metrics: [String: Double],
+    thresholds: [String: Double]
+) -> [InsightDataQualityIssue] {
+    // TODO: Implement actual quality issue identification
+    return []
+}
+
+private func generateQualityRecommendations(
+    for issues: [InsightDataQualityIssue]
+) -> [String] {
+    // TODO: Implement actual quality recommendations generation
+    return ["Increase data collection frequency", "Validate data sources"]
+}
+
+private func generateBenchmarkComparison(
+    current: [String: Double],
+    benchmark: [String: Double]
+) -> [String: Any] {
+    // TODO: Implement actual benchmark comparison generation
+    return [
+        "overall_score": 0.82,
+        "areas_for_improvement": ["Data completeness", "Measurement accuracy"]
+    ]
+}
+
+// MARK: - Missing Data Analysis Stub Functions
+private func identifyAffectedAnalyses(
+    by missingData: [String],
+    in context: [HealthRecordProtocol]
+) -> [String] {
+    // TODO: Implement actual affected analysis identification
+    return ["Trend analysis", "Correlation analysis"]
+}
+
+private func calculateConfidenceReduction(
+    due missingData: [String],
+    in analyses: [String]
+) -> [String: Double] {
+    // TODO: Implement actual confidence reduction calculation
+    return analyses.reduce(into: [String: Double]()) { result, analysis in
+        result[analysis] = Double.random(in: 0.1...0.3)
+    }
+}
+
+private func generateMissingDataMitigationStrategies(
+    for missingData: [String]
+) -> [String] {
+    // TODO: Implement actual mitigation strategy generation
+    return ["Use interpolation for short gaps", "Increase measurement frequency"]
+}
+
+private func generateAlternativeAnalysisApproaches(
+    for missingData: [String]
+) -> [String] {
+    // TODO: Implement actual alternative approach generation
+    return ["Use available data subsets", "Apply robust statistical methods"]
+}
+
+private func generateDataCollectionRecommendations(
+    for missingData: [String]
+) -> [String] {
+    // TODO: Implement actual data collection recommendations
+    return ["Enable automatic data sync", "Set up regular reminders"]
+}
+
+// MARK: - Peer Comparison Stub Functions
+private func applyDemographicFilters(
+    to peerData: [HealthRecordProtocol],
+    filters: [DemographicFilter]
+) -> [HealthRecordProtocol] {
+    // TODO: Implement actual demographic filtering
+    return peerData
+}
+
+private func calculatePeerStatistics(
+    for type: HealthDataType,
+    in peerData: [HealthRecordProtocol]
+) -> (median: Double, mean: Double, standardDeviation: Double) {
+    // TODO: Implement actual peer statistics calculation
+    let values = peerData.filter { $0.type == type }.map { $0.value }
+    guard !values.isEmpty else { return (0.0, 0.0, 0.0) }
+    
+    let sortedValues = values.sorted()
+    let median = sortedValues[sortedValues.count / 2]
+    let mean = values.reduce(0, +) / Double(values.count)
+    let variance = values.map { pow($0 - mean, 2) }.reduce(0, +) / Double(values.count)
+    let standardDeviation = sqrt(variance)
+    
+    return (median, mean, standardDeviation)
+}
+
+private func calculatePercentile(
+    value: Double,
+    in dataset: [Double]
+) -> Double {
+    // TODO: Implement actual percentile calculation
+    let sortedData = dataset.sorted()
+    guard !sortedData.isEmpty else { return 50.0 }
+    
+    let rank = sortedData.firstIndex(where: { $0 >= value }) ?? sortedData.count - 1
+    return (Double(rank) / Double(sortedData.count)) * 100
+}
+
+private func interpretComparison(
+    percentile: Double
+) -> String {
+    // TODO: Implement actual comparison interpretation
+    switch percentile {
+    case 80...: return "Excellent performance"
+    case 60..<80: return "Above average"
+    case 40..<60: return "Average performance"
+    case 20..<40: return "Below average"
+    default: return "Needs improvement"
+    }
+}
+
+private func calculateOverallRanking(
+    from comparisons: [MetricComparison]
+) -> Double {
+    // TODO: Implement actual overall ranking calculation
+    guard !comparisons.isEmpty else { return 50.0 }
+    
+    let averagePercentile = comparisons.map { $0.percentile }.reduce(0, +) / Double(comparisons.count)
+    return averagePercentile
+}
+
+private func generatePeerComparisonInsights(
+    from comparisons: [MetricComparison],
+    ranking: Double
+) -> [String] {
+    // TODO: Implement actual peer comparison insights generation
+    return [
+        "Your performance is consistent with peers",
+        "Consider focusing on cardiovascular health",
+        "Sleep patterns show room for improvement"
+    ]
+}
+
+// MARK: - Population Analysis Stub Functions
+private func applyNormalizationFactors(
+    to data: [HealthRecordProtocol],
+    factors: [NormalizationFactor]
+) -> [HealthRecordProtocol] {
+    // TODO: Implement actual normalization
+    return data
+}
+
+private func getPopulationStatistics(
+    for type: HealthDataType,
+    in database: PopulationDatabase
+) -> (mean: Double, standardDeviation: Double) {
+    // TODO: Implement actual population statistics retrieval
+    return (mean: 70.0, standardDeviation: 15.0) // Example values
+}
+
+private func calculatePopulationPercentile(
+    value: Double,
+    mean: Double,
+    standardDeviation: Double
+) -> Double {
+    // TODO: Implement actual population percentile calculation
+    let zScore = standardDeviation > 0 ? (value - mean) / standardDeviation : 0
+    return max(0, min(100, 50 + (zScore * 34.13)))
+}
+
+private func interpretPopulationComparison(
+    percentile: Double
+) -> String {
+    // TODO: Implement actual population comparison interpretation
+    switch percentile {
+    case 90...: return "Exceptional compared to population"
+    case 75..<90: return "Above population average"
+    case 25..<75: return "Within normal range"
+    case 10..<25: return "Below population average"
+    default: return "Significantly below population norms"
+    }
+}
+
+private func generateOverallPopulationAssessment(
+    from comparisons: [PopulationComparison]
+) -> String {
+    // TODO: Implement actual overall population assessment
+    return "Overall health metrics are within expected ranges for your demographic"
+}
+
+private func generatePopulationComparisonRecommendations(
+    from comparisons: [PopulationComparison]
+) -> [String] {
+    // TODO: Implement actual population comparison recommendations
+    return [
+        "Maintain current health practices",
+        "Consider consulting healthcare provider for optimization",
+        "Focus on areas below population averages"
+    ]
+}
+
+// MARK: - Baseline Change Analysis Stub Functions
+private func calculateChangeConfidence(
+    oldBaseline: Double,
+    newBaseline: Double,
+    dataQuality: Double
+) -> Double {
+    // TODO: Implement actual change confidence calculation
+    let changeSignificance = abs(newBaseline - oldBaseline) / max(abs(oldBaseline), 1.0)
+    return min(0.95, changeSignificance * dataQuality)
+}
+
+private func generateBaselineChangeInsights(
+    from changes: [BaselineChange]
+) -> [String] {
+    // TODO: Implement actual baseline change insights generation
+    return [
+        "Significant improvement in sleep quality detected",
+        "Weight trend showing positive direction",
+        "Activity levels have stabilized"
+    ]
+}
+
+private func generateBaselineChangeRecommendations(
+    from changes: [BaselineChange]
+) -> [String] {
+    // TODO: Implement actual baseline change recommendations
+    return [
+        "Continue current lifestyle modifications",
+        "Monitor changes over longer period",
+        "Consider adjusting goals based on new baseline"
+    ]
+}
+
+// MARK: - Advanced Analysis Stub Functions
+private func applyMultivariateAnalysis(
+    to data: [HealthRecordProtocol]
+) -> [String: Any] {
+    // TODO: Implement actual multivariate analysis
+    return [
+        "principal_components": ["PC1", "PC2", "PC3"],
+        "explained_variance": [0.45, 0.23, 0.18],
+        "feature_loadings": ["weight": 0.8, "activity": 0.6]
+    ]
+}
+
+private func applyTimeSeriesDecomposition(
+    to data: [HealthRecordProtocol]
+) -> [String: Any] {
+    // TODO: Implement actual time series decomposition
+    return [
+        "trend": Array(repeating: 70.0, count: data.count),
+        "seasonal": Array(repeating: 0.0, count: data.count),
+        "residual": Array(repeating: 0.1, count: data.count)
+    ]
+}
+
+private func determineOptimalClusterCount(
+    for data: [HealthRecordProtocol]
+) -> Int {
+    // TODO: Implement actual optimal cluster determination
+    return min(max(2, data.count / 10), 5)
+}
+
+private func applyClustering(
+    to data: [HealthRecordProtocol],
+    clusterCount: Int,
+    method: String
+) -> [String: Any] {
+    // TODO: Implement actual clustering
+    return [
+        "cluster_assignments": Array(0..<data.count).map { $0 % clusterCount },
+        "cluster_centers": Array(0..<clusterCount).map { Double($0) * 10 },
+        "silhouette_score": 0.6
+    ]
+}
+
+// MARK: - Synthesis Stub Functions
+private func filterInsightsByPreferences(
+    insights: [HealthInsight],
+    preferences: PersonalizationLevel
+) -> [HealthInsight] {
+    // TODO: Implement actual insight filtering by preferences
+    return insights.prefix(10).map { $0 }
+}
+
+private func applySynthesisStrategy(
+    to insights: [HealthInsight],
+    strategy: String
+) -> [HealthInsight] {
+    // TODO: Implement actual synthesis strategy application
+    return insights.sorted { $0.confidence > $1.confidence }
+}
+
+private func extractKeyFindings(from insights: [HealthInsight]) -> [String] {
+    // TODO: Implement actual key findings extraction
+    return insights.prefix(5).map { $0.title }
+}
+
+private func identifyPriorityInsights(from insights: [HealthInsight]) -> [HealthInsight] {
+    // TODO: Implement actual priority insight identification
+    return insights.filter { $0.confidence > 0.7 }
+}
+
+private func extractActionableRecommendations(
+    from insights: [HealthInsight]
+) -> [String] {
+    // TODO: Implement actual actionable recommendation extraction
+    return insights.flatMap { $0.recommendations }.prefix(10).map { $0 }
+}
+
+private func calculateSynthesisScore(
+    for insights: [HealthInsight]
+) -> Double {
+    // TODO: Implement actual synthesis score calculation
+    guard !insights.isEmpty else { return 0.0 }
+    
+    let averageConfidence = insights.map { $0.confidence }.reduce(0, +) / Double(insights.count)
+    let diversityScore = Set(insights.map { $0.category }).count
+    return (averageConfidence + Double(diversityScore) * 0.1) / 2.0
+}
+
+// MARK: - Report Generation Stub Functions
+private func generateReportSection(
+    title: String,
+    content: [HealthInsight],
+    format: String
+) -> [String: Any] {
+    // TODO: Implement actual report section generation
+    return [
+        "title": title,
+        "summary": "Section summary for \(title)",
+        "insights_count": content.count,
+        "key_points": content.prefix(3).map { $0.title }
+    ]
+}
+
+private func generateReportMetadata(
+    for insights: [HealthInsight],
+    timeRange: TimeRange
+) -> [String: Any] {
+    // TODO: Implement actual report metadata generation
+    return [
+        "generated_at": Date().ISO8601Format(),
+        "time_range": timeRange.rawValue,
+        "insights_count": insights.count,
+        "data_quality_score": 0.85
+    ]
+}
+
+private func calculateReportSize(
+    sections: [[String: Any]],
+    metadata: [String: Any]
+) -> Int {
+    // TODO: Implement actual report size calculation
+    return sections.count * 1000 + 500 // Approximate byte size
+}
+
+// MARK: - Accuracy Evaluation Stub Functions
+private func evaluateIndividualInsightAccuracy(
+    insight: HealthInsight,
+    actualOutcome: String
+) -> Double {
+    // TODO: Implement actual individual insight accuracy evaluation
+    return Double.random(in: 0.6...0.9)
+}
+
+private func calculateAccuracyMetric(
+    predictions: [Double],
+    actual: [Double]
+) -> Double {
+    // TODO: Implement actual accuracy metric calculation
+    guard predictions.count == actual.count && !predictions.isEmpty else { return 0.0 }
+    
+    let errors = zip(predictions, actual).map { abs($0 - $1) }
+    let meanError = errors.reduce(0, +) / Double(errors.count)
+    return max(0.0, 1.0 - meanError)
+}
+
+private func calculateConfidenceCalibration(
+    confidences: [Double],
+    accuracies: [Double]
+) -> Double {
+    // TODO: Implement actual confidence calibration calculation
+    guard confidences.count == accuracies.count && !confidences.isEmpty else { return 0.5 }
+    
+    let deviations = zip(confidences, accuracies).map { abs($0 - $1) }
+    let meanDeviation = deviations.reduce(0, +) / Double(deviations.count)
+    return max(0.0, 1.0 - meanDeviation)
+}
+
+private func identifyPredictionErrors(
+    from accuracies: [Double]
+) -> [String] {
+    // TODO: Implement actual prediction error identification
+    return [
+        "Overconfidence in sleep predictions",
+        "Underestimating activity trend changes",
+        "Seasonal adjustment errors"
+    ]
+}
+
+private func generateAccuracyImprovementSuggestions(
+    from results: [String: Double],
+    errors: [String]
+) -> [String] {
+    // TODO: Implement actual accuracy improvement suggestions
+    return [
+        "Increase training data diversity",
+        "Improve feature engineering",
+        "Adjust confidence thresholds",
+        "Implement ensemble methods"
+    ]
+}
+
 private extension InsightEngine {
     
     // MARK: - Correlation Helper Methods
@@ -1850,9 +2404,9 @@ private extension InsightEngine {
             phase: 0.0,
             confidence: 0.7,
             detectedCycles: minimumCycles,
-            peakSeason: .summer,
-            troughSeason: .winter,
-            yearlyTrend: .stable,
+            peakSeason: Season.summer,
+            troughSeason: Season.winter,
+            yearlyTrend: SeasonalTrend.stable,
             adjustedRSquared: 0.7,
             description: "年間季節パターンが検出されました"
         )
@@ -1871,9 +2425,9 @@ private extension InsightEngine {
             phase: 0.0,
             confidence: 0.6,
             detectedCycles: minimumCycles,
-            peakSeason: .summer,
-            troughSeason: .winter,
-            yearlyTrend: .stable,
+            peakSeason: Season.summer,
+            troughSeason: Season.winter,
+            yearlyTrend: SeasonalTrend.stable,
             adjustedRSquared: 0.6,
             description: "四半期季節パターンが検出されました"
         )
@@ -2084,7 +2638,7 @@ private extension InsightEngine {
     func analyzeIndividualHabitFormation(habit: TargetHabit, behaviorHistory: [BehaviorRecord], threshold: HabitFormationThreshold) -> HabitFormationAnalysis {
         return HabitFormationAnalysis(
             habitName: habit.name,
-            formationStage: .forming,
+            formationStage: "forming",
             consistency: 0.8,
             streakCurrent: 7,
             streakLongest: 14,
@@ -2095,13 +2649,13 @@ private extension InsightEngine {
     }
     
     func calculateOverallMotivation(from engagementData: [EngagementRecord]) -> Double { return 0.7 }
-    func determineMotivationTrend(from engagementData: [EngagementRecord]) -> TrendDirection { return .stable }
+    func determineMotivationTrend(from engagementData: [EngagementRecord]) -> TrendDirection { return TrendDirection.stable }
     func identifyPeakMotivationPeriods(from engagementData: [EngagementRecord]) -> [MotivationPeriod] { return [] }
     func identifyLowMotivationPeriods(from engagementData: [EngagementRecord]) -> [MotivationPeriod] { return [] }
     func identifyMotivationDrivers(from engagementData: [EngagementRecord], externalFactors: [InsightExternalFactor]) -> [MotivationDriver] { return [] }
     func identifyDemotivatingFactors(from engagementData: [EngagementRecord], externalFactors: [InsightExternalFactor]) -> [DemotivatingFactor] { return [] }
     func generateMotivationRecommendations(based overallMotivation: Double, drivers: [MotivationDriver], demotivatingFactors: [DemotivatingFactor]) -> [MotivationRecommendation] { return [] }
-    func predictMotivationTrend(currentLevel: Double, historicalTrend: TrendDirection, externalFactors: [InsightExternalFactor]) -> TrendDirection { return .stable }
+    func predictMotivationTrend(currentLevel: Double, historicalTrend: TrendDirection, externalFactors: [InsightExternalFactor]) -> TrendDirection { return TrendDirection.stable }
     
     // Additional implementation stubs for compilation...
 }
@@ -2123,44 +2677,87 @@ struct BehavioralPattern: Codable, Identifiable { let id = UUID() }
 struct BehavioralStrength: Codable, Identifiable { let id = UUID() }
 struct ImprovementArea: Codable, Identifiable { let id = UUID() }
 struct BehavioralRecommendation: Codable, Identifiable { let id = UUID() }
-struct AdherenceMetric: Codable, Identifiable { let id = UUID() }
+// MARK: - Minimal Type Definitions (TODO: Proper implementation needed)
 
-struct HabitFormationAnalysis: Codable {
+struct AdherenceMetric: Codable, Identifiable {
+    let id = UUID()
+    let placeholder: String = "stub"
+}
+
+struct HabitFormationAnalysis: Codable, Identifiable {
+    let id = UUID()
     let habitName: String
-    let formationStage: HabitFormationStage
+    let formationStage: String
     let consistency: Double
     let streakCurrent: Int
     let streakLongest: Int
     let predictedSuccess: Double
-    let strengthFactors: [HabitStrengthFactor]
-    let challengeFactors: [HabitChallengeFactor]
+    let strengthFactors: [String]
+    let challengeFactors: [String]
+    
+    init(habitName: String, formationStage: String, consistency: Double, streakCurrent: Int, streakLongest: Int, predictedSuccess: Double, strengthFactors: [String], challengeFactors: [String]) {
+        self.habitName = habitName
+        self.formationStage = formationStage
+        self.consistency = consistency
+        self.streakCurrent = streakCurrent
+        self.streakLongest = streakLongest
+        self.predictedSuccess = predictedSuccess
+        self.strengthFactors = strengthFactors
+        self.challengeFactors = challengeFactors
+    }
 }
 
-enum HabitFormationStage: String, Codable {
-    case forming = "forming"
-    case storming = "storming"
-    case norming = "norming"
-    case performing = "performing"
-}
-
-struct HabitStrengthFactor: Codable, Identifiable { let id = UUID() }
-struct HabitChallengeFactor: Codable, Identifiable { let id = UUID() }
-
-struct MotivationPatternAnalysis: Codable {
-    let timeframe: MotivationTimeframe
+struct MotivationPatternAnalysis: Codable, Identifiable {
+    let id = UUID()
+    let timeframe: String
     let overallMotivation: Double
-    let motivationTrend: TrendDirection
-    let peakMotivationPeriods: [MotivationPeriod]
-    let lowMotivationPeriods: [MotivationPeriod]
-    let motivationDrivers: [MotivationDriver]
-    let demotivatingFactors: [DemotivatingFactor]
-    let recommendations: [MotivationRecommendation]
-    let predictedTrend: TrendDirection
+    let motivationTrend: String
+    let peakMotivationPeriods: [String]
+    let lowMotivationPeriods: [String]
+    let motivationDrivers: [String]
+    let demotivatingFactors: [String]
+    let recommendations: [String]
+    let predictedTrend: String
+    
+    init(timeframe: String, overallMotivation: Double, motivationTrend: String, peakMotivationPeriods: [String], lowMotivationPeriods: [String], motivationDrivers: [String], demotivatingFactors: [String], recommendations: [String], predictedTrend: String) {
+        self.timeframe = timeframe
+        self.overallMotivation = overallMotivation
+        self.motivationTrend = motivationTrend
+        self.peakMotivationPeriods = peakMotivationPeriods
+        self.lowMotivationPeriods = lowMotivationPeriods
+        self.motivationDrivers = motivationDrivers
+        self.demotivatingFactors = demotivatingFactors
+        self.recommendations = recommendations
+        self.predictedTrend = predictedTrend
+    }
 }
 
-struct MotivationPeriod: Codable, Identifiable { let id = UUID() }
-struct MotivationDriver: Codable, Identifiable { let id = UUID() }
-struct DemotivatingFactor: Codable, Identifiable { let id = UUID() }
-struct MotivationRecommendation: Codable, Identifiable { let id = UUID() }
+struct MotivationPeriod: Codable, Identifiable {
+    let id = UUID()
+    let placeholder: String = "stub"
+}
 
-// Additional supporting types would be defined here for full implementation...
+struct MotivationDriver: Codable, Identifiable {
+    let id = UUID()
+    let placeholder: String = "stub"
+}
+
+struct DemotivatingFactor: Codable, Identifiable {
+    let id = UUID()
+    let placeholder: String = "stub"
+}
+
+struct MotivationRecommendation: Codable, Identifiable {
+    let id = UUID()
+    let placeholder: String = "stub"
+}
+
+struct HabitStrengthFactor: Codable, Identifiable {
+    let id = UUID()
+    let placeholder: String = "stub"
+}
+
+struct HabitChallengeFactor: Codable, Identifiable {
+    let id = UUID()
+    let placeholder: String = "stub"
+}

@@ -1165,3 +1165,194 @@ enum ContextualFactorType: String, CaseIterable, Codable {
         }
     }
 }
+
+// MARK: - Additional Missing Types
+
+struct MetricComparison: Codable, Identifiable {
+    let id: UUID
+    let metricType: HealthDataType
+    let userValue: Double
+    let peerMedian: Double
+    let peerMean: Double
+    let percentile: Double
+    let comparison: ComparisonResult
+    let confidenceLevel: Double
+    let sampleSize: Int
+    
+    init(metricType: HealthDataType, userValue: Double, peerMedian: Double, peerMean: Double, percentile: Double, confidenceLevel: Double, sampleSize: Int) {
+        self.id = UUID()
+        self.metricType = metricType
+        self.userValue = userValue
+        self.peerMedian = peerMedian
+        self.peerMean = peerMean
+        self.percentile = percentile
+        self.confidenceLevel = confidenceLevel
+        self.sampleSize = sampleSize
+        self.comparison = Self.determineComparison(userValue: userValue, peerMedian: peerMedian, percentile: percentile)
+    }
+    
+    private static func determineComparison(userValue: Double, peerMedian: Double, percentile: Double) -> ComparisonResult {
+        if percentile >= 75 { return .aboveAverage }
+        else if percentile >= 25 { return .average }
+        else { return .belowAverage }
+    }
+}
+
+enum ComparisonResult: String, CaseIterable, Codable {
+    case aboveAverage = "above_average"
+    case average = "average"
+    case belowAverage = "below_average"
+    
+    var displayName: String {
+        switch self {
+        case .aboveAverage: return "平均以上"
+        case .average: return "平均的"
+        case .belowAverage: return "平均以下"
+        }
+    }
+}
+
+struct PopulationComparison: Codable, Identifiable {
+    let id: UUID
+    let populationType: PopulationType
+    let metricType: HealthDataType
+    let userValue: Double
+    let populationMean: Double
+    let populationStandardDeviation: Double
+    let zScore: Double
+    let percentile: Double
+    let confidenceInterval: ConfidenceInterval
+    let interpretation: PopulationComparisonResult
+    
+    init(populationType: PopulationType, metricType: HealthDataType, userValue: Double, populationMean: Double, populationStandardDeviation: Double) {
+        self.id = UUID()
+        self.populationType = populationType
+        self.metricType = metricType
+        self.userValue = userValue
+        self.populationMean = populationMean
+        self.populationStandardDeviation = populationStandardDeviation
+        self.zScore = populationStandardDeviation > 0 ? (userValue - populationMean) / populationStandardDeviation : 0
+        self.percentile = Self.calculatePercentile(zScore: zScore)
+        self.confidenceInterval = ConfidenceInterval(lowerBound: userValue - 1.96 * populationStandardDeviation, upperBound: userValue + 1.96 * populationStandardDeviation, confidenceLevel: 0.95)
+        self.interpretation = Self.interpretResult(percentile: percentile)
+    }
+    
+    private static func calculatePercentile(zScore: Double) -> Double {
+        // Simplified normal distribution percentile calculation
+        return max(0, min(100, 50 + (zScore * 34.13)))
+    }
+    
+    private static func interpretResult(percentile: Double) -> PopulationComparisonResult {
+        switch percentile {
+        case 90...: return .exceptional
+        case 75..<90: return .aboveAverage
+        case 25..<75: return .typical
+        case 10..<25: return .belowAverage
+        default: return .concerningLow
+        }
+    }
+}
+
+enum PopulationType: String, CaseIterable, Codable {
+    case general = "general"
+    case ageMatched = "age_matched"
+    case genderMatched = "gender_matched"
+    case demographicMatched = "demographic_matched"
+    case healthConditionMatched = "health_condition_matched"
+    
+    var displayName: String {
+        switch self {
+        case .general: return "一般人口"
+        case .ageMatched: return "同年代"
+        case .genderMatched: return "同性"
+        case .demographicMatched: return "同一属性"
+        case .healthConditionMatched: return "同一健康状態"
+        }
+    }
+}
+
+enum PopulationComparisonResult: String, CaseIterable, Codable {
+    case exceptional = "exceptional"
+    case aboveAverage = "above_average"
+    case typical = "typical"
+    case belowAverage = "below_average"
+    case concerningLow = "concerning_low"
+    
+    var displayName: String {
+        switch self {
+        case .exceptional: return "優秀"
+        case .aboveAverage: return "平均以上"
+        case .typical: return "標準的"
+        case .belowAverage: return "平均以下"
+        case .concerningLow: return "要注意"
+        }
+    }
+}
+
+struct BaselineChange: Codable, Identifiable {
+    let id: UUID
+    let metricType: HealthDataType
+    let changeType: BaselineChangeType
+    let significance: ChangeSignificance
+    let oldBaseline: Double
+    let newBaseline: Double
+    let changeAmount: Double
+    let changePercentage: Double
+    let detectionDate: Date
+    let confidence: Double
+    let timeWindow: TimeInterval
+    
+    init(metricType: HealthDataType, changeType: BaselineChangeType, significance: ChangeSignificance, oldBaseline: Double, newBaseline: Double, detectionDate: Date, confidence: Double, timeWindow: TimeInterval) {
+        self.id = UUID()
+        self.metricType = metricType
+        self.changeType = changeType
+        self.significance = significance
+        self.oldBaseline = oldBaseline
+        self.newBaseline = newBaseline
+        self.detectionDate = detectionDate
+        self.confidence = confidence
+        self.timeWindow = timeWindow
+        self.changeAmount = newBaseline - oldBaseline
+        self.changePercentage = oldBaseline != 0 ? ((newBaseline - oldBaseline) / abs(oldBaseline)) * 100 : 0
+    }
+}
+
+enum BaselineChangeType: String, CaseIterable, Codable {
+    case gradualIncrease = "gradual_increase"
+    case gradualDecrease = "gradual_decrease"
+    case suddenIncrease = "sudden_increase"
+    case suddenDecrease = "sudden_decrease"
+    case cyclicalShift = "cyclical_shift"
+    case seasonalAdjustment = "seasonal_adjustment"
+    
+    var displayName: String {
+        switch self {
+        case .gradualIncrease: return "緩やかな増加"
+        case .gradualDecrease: return "緩やかな減少"
+        case .suddenIncrease: return "急激な増加"
+        case .suddenDecrease: return "急激な減少"
+        case .cyclicalShift: return "周期的変化"
+        case .seasonalAdjustment: return "季節調整"
+        }
+    }
+}
+
+enum ChangeSignificance: String, CaseIterable, Codable {
+    case veryHigh = "very_high"
+    case high = "high"
+    case moderate = "moderate"
+    case low = "low"
+    case negligible = "negligible"
+    
+    var displayName: String {
+        switch self {
+        case .veryHigh: return "非常に高い"
+        case .high: return "高い"
+        case .moderate: return "中程度"
+        case .low: return "低い"
+        case .negligible: return "無視できる"
+        }
+    }
+}
+
+// InsightDataQualityIssue moved to SupportingModels.swift to avoid duplication

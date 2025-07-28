@@ -1,34 +1,34 @@
 # 実装計画
 
-- [ ] 1. プロジェクト基盤とドメインモデルの設定
-  - SwiftDataモデル（HealthRecord、User、Goal、Badge）の実装とテスト作成
-  - ModelContainer設定の更新とCloudKit連携設定
-  - 基本的なエラーハンドリング型の定義
-  - AI連携対応ロギング機能（AILogger）の実装とテスト作成
+- [x] 1. プロジェクト基盤とドメインモデルの設定 ✅ **完了**
+  - ✅ SwiftDataモデル（HealthRecord、User、Goal、Badge）の実装とテスト作成
+  - ✅ ModelContainer設定の更新とCloudKit連携設定
+  - ✅ 基本的なエラーハンドリング型の定義
+  - ✅ AI連携対応ロギング機能（AILogger）の実装とテスト作成
   - _要件: 1.1, 1.2, 8.1, 8.2, 8.3, 9.1_
 
-- [ ] 2. HealthKit連携の基盤実装
-  - HealthKitServiceプロトコルとMock実装の作成
-  - HealthKitアクセス許可要求機能の実装とテスト
-  - 基本的な健康データ取得機能（体重、歩数、消費カロリー）の実装
+- [x] 2. HealthKit連携の基盤実装 🔄 **部分完了**
+  - ✅ HealthKitServiceプロトコルとMock実装の作成
+  - ⏳ HealthKitアクセス許可要求機能の実装とテスト
+  - ⏳ 基本的な健康データ取得機能（体重、歩数、消費カロリー）の実装
   - _要件: 1.1, 1.2, 1.3_
 
-- [ ] 3. Repository層の実装
-  - HealthRecordRepositoryプロトコルの定義
-  - SwiftDataHealthRecordRepository実装とテスト作成
-  - UserRepositoryとBadgeRepositoryの実装とテスト作成
+- [x] 3. Repository層の実装 ✅ **完了**
+  - ✅ HealthRecordRepositoryプロトコルの定義
+  - ✅ SwiftDataHealthRecordRepository実装とテスト作成
+  - ✅ UserRepositoryとBadgeRepositoryの実装とテスト作成
   - _要件: 1.4, 7.1, 7.2, 9.1_
 
-- [ ] 4. Use Case層の実装
-  - RecordHealthDataUseCaseの実装とテスト作成
-  - FetchHealthDataUseCaseの実装とテスト作成
-  - ManageGoalsUseCaseの実装とテスト作成
+- [x] 4. Use Case層の実装 🔄 **部分完了**
+  - ✅ RecordHealthDataUseCaseの実装とテスト作成
+  - ✅ FetchHealthDataUseCaseの実装とテスト作成
+  - ✅ ManageGoalsUseCaseの実装とテスト作成
   - _要件: 1.2, 1.3, 5.1, 5.2_
 
-- [ ] 5. ドメインサービスの実装
-  - TrendAnalyzerの実装とテスト作成（移動平均、傾向分析）
-  - GoalTrackerの実装とテスト作成
-  - InsightEngineの基本実装とテスト作成
+- [x] 5. ドメインサービスの実装 🔄 **部分完了**
+  - ✅ TrendAnalyzerの実装とテスト作成（移動平均、傾向分析）
+  - ⏳ GoalTrackerの実装とテスト作成
+  - ✅ InsightEngineの基本実装とテスト作成（スタブレベル）
   - _要件: 2.1, 2.2, 5.3, 6.1_
 
 - [ ] 6. ViewModelの実装（@Observable）
@@ -134,11 +134,11 @@
   - バッジコレクション画面とアニメーションの実装
   - _要件: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 21. AI連携対応ロギング機能の実装
-  - AILoggerクラスの実装とテスト作成
-  - 構造化ログ出力機能の実装（JSON形式）
-  - ログレベル管理とPII除去機能の実装
-  - パフォーマンスログとユーザーアクションログの実装
+- [x] 21. AI連携対応ロギング機能の実装 ✅ **完了**
+  - ✅ AILoggerクラスの実装とテスト作成
+  - ✅ 構造化ログ出力機能の実装（JSON形式）
+  - ✅ ログレベル管理とPII除去機能の実装
+  - ✅ パフォーマンスログとユーザーアクションログの実装
   - _要件: 8.1, 8.2, 8.3, 8.4, 8.5_
 
 - [ ] 22. ゲーミフィケーション統合機能

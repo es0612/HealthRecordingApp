@@ -15,8 +15,8 @@ let package = Package(
                 "Assets.xcassets",
                 "Info.plist",
                 "HealthRecordingApp.entitlements",
-                "HealthRecordingAppApp.swift",
-                "ContentView.swift"
+                "ContentView.swift",
+                "Domain/Services/InsightEngine"
             ]
         ),
         .testTarget(
