@@ -469,20 +469,22 @@ final class ManageGoalsUseCase: ManageGoalsUseCaseProtocol {
         
         let suggestedDeadline = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
         
-        let suggestionData = GoalSuggestionData(
-            averageValue: averageValue,
-            recentTrend: trend,
-            dataPoints: healthRecords.count,
-            timespan: endDate.timeIntervalSince(startDate)
-        )
+        let dataInfo = [
+            "average_value": "\(averageValue)",
+            "trend": trend.rawValue,
+            "data_points": "\(healthRecords.count)",
+            "timespan_days": "\(Int(endDate.timeIntervalSince(startDate) / (24 * 60 * 60)))"
+        ]
         
         return GoalSuggestion(
             type: dataType,
             suggestedTargetValue: targetValue,
             suggestedDeadline: suggestedDeadline,
+            title: "\(dataType.displayName)目標",
+            description: reasoning,
             reasoning: reasoning,
-            confidenceLevel: confidence,
-            basedOnData: suggestionData
+            confidenceScore: confidence,
+            basedOnData: Array(dataInfo.keys)
         )
     }
     

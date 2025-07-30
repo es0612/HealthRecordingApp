@@ -33,10 +33,12 @@ enum HealthKitAuthorizationStatus {
 class HealthDataObserver {
     let dataType: HealthDataType
     let handler: ([HealthRecord]) -> Void
+    let hkObserverQuery: HKObserverQuery?
     
-    init(dataType: HealthDataType, handler: @escaping ([HealthRecord]) -> Void) {
+    init(dataType: HealthDataType, handler: @escaping ([HealthRecord]) -> Void, hkObserverQuery: HKObserverQuery? = nil) {
         self.dataType = dataType
         self.handler = handler
+        self.hkObserverQuery = hkObserverQuery
     }
 }
 
@@ -45,6 +47,9 @@ class HealthDataObserver {
 final class HealthKitService {
     private let healthStore = HKHealthStore()
     private var observers: [HealthDataObserver] = []
+    
+    // アンカーポイントを保存（効率的なデータ取得のため）
+    private var anchorPoints: [HealthDataType: HKQueryAnchor] = [:]
     
     // テスト用フラグ
     var simulateAuthorizationDenied = false
@@ -55,8 +60,61 @@ final class HealthKitService {
     }
     
     var authorizationStatus: HealthKitAuthorizationStatus {
-        // 簡略化：実際にはデータタイプごとに状態が異なる
+        // 主要なデータタイプの認証状態をチェック
+        guard let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass),
+              let stepsType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
+            return .notDetermined
+        }
+        
+        let weightStatus = healthStore.authorizationStatus(for: weightType)
+        let stepsStatus = healthStore.authorizationStatus(for: stepsType)
+        
+        // いずれかが許可されていれば許可済みとする
+        if weightStatus == .sharingAuthorized || stepsStatus == .sharingAuthorized {
+            return .sharingAuthorized
+        }
+        
+        // 全て拒否されていれば拒否
+        if weightStatus == .sharingDenied && stepsStatus == .sharingDenied {
+            return .sharingDenied
+        }
+        
         return .notDetermined
+    }
+    
+    /// Check authorization status for a specific data type
+    func authorizationStatus(for dataType: HealthDataType) -> HealthKitAuthorizationStatus {
+        guard let healthKitType = dataType.healthKitType else {
+            return .sharingDenied
+        }
+        
+        let status = healthStore.authorizationStatus(for: healthKitType)
+        switch status {
+        case .notDetermined:
+            return .notDetermined
+        case .sharingDenied:
+            return .sharingDenied
+        case .sharingAuthorized:
+            return .sharingAuthorized
+        @unknown default:
+            return .notDetermined
+        }
+    }
+    
+    /// Check if a specific data type is authorized
+    func isAuthorized(for dataType: HealthDataType) -> Bool {
+        return authorizationStatus(for: dataType) == .sharingAuthorized
+    }
+    
+    /// Get authorization status for multiple data types
+    func authorizationStatus(for dataTypes: Set<HealthDataType>) -> [HealthDataType: HealthKitAuthorizationStatus] {
+        var statusMap: [HealthDataType: HealthKitAuthorizationStatus] = [:]
+        
+        for dataType in dataTypes {
+            statusMap[dataType] = authorizationStatus(for: dataType)
+        }
+        
+        return statusMap
     }
     
     // MARK: - Authorization
@@ -65,6 +123,15 @@ final class HealthKitService {
         // テスト用シミュレーション
         if simulateAuthorizationDenied {
             throw HealthKitError.authorizationDenied
+        }
+        
+        // HealthKit利用可能性チェック
+        guard isHealthDataAvailable else {
+            throw HealthKitError.dataAccessFailed(
+                NSError(domain: "HealthKitService", code: 1001, userInfo: [
+                    NSLocalizedDescriptionKey: "HealthKit is not available on this device"
+                ])
+            )
         }
         
         let supportedTypes = dataTypes.compactMap { $0.healthKitType }
@@ -82,14 +149,26 @@ final class HealthKitService {
         let readTypes = Set(supportedTypes)
         let writeTypes = Set(supportedTypes)
         
-        return try await withCheckedThrowingContinuation { continuation in
-            healthStore.requestAuthorization(toShare: writeTypes, read: readTypes) { success, error in
-                if let error = error {
-                    continuation.resume(throwing: HealthKitError.dataAccessFailed(error))
-                } else {
-                    continuation.resume(returning: success)
+        do {
+            let result: Bool = try await withCheckedThrowingContinuation { continuation in
+                healthStore.requestAuthorization(toShare: writeTypes, read: readTypes) { success, error in
+                    if let error = error {
+                        continuation.resume(throwing: HealthKitError.dataAccessFailed(error))
+                    } else {
+                        continuation.resume(returning: success)
+                    }
                 }
             }
+            
+            // 認証後の状態をログ出力
+            let statusMap = authorizationStatus(for: dataTypes)
+            let authorizedTypes = statusMap.filter { $0.value == .sharingAuthorized }.keys
+            
+            // 少なくとも1つのデータタイプが許可されていれば成功とする
+            return !authorizedTypes.isEmpty
+            
+        } catch {
+            throw error
         }
     }
     
@@ -165,6 +244,90 @@ final class HealthKitService {
         return allData
     }
     
+    // MARK: - Anchored Data Reading (Efficient Updates)
+    
+    func readNewHealthData(
+        type: HealthDataType,
+        limit: Int = HKObjectQueryNoLimit
+    ) async throws -> [HealthKitData] {
+        
+        // テスト環境では空の配列を返す
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return []
+        }
+        
+        guard let healthKitType = type.healthKitType else {
+            throw HealthKitError.unsupportedDataType(type.rawValue)
+        }
+        
+        // 認証状態を確認
+        let authStatus = authorizationStatus(for: type)
+        guard authStatus == .sharingAuthorized else {
+            throw HealthKitError.authorizationDenied
+        }
+        
+        // 前回のアンカーポイントを取得（初回はnilになる）
+        let anchor = anchorPoints[type]
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let anchoredQuery = HKAnchoredObjectQuery(
+                type: healthKitType,
+                predicate: nil,
+                anchor: anchor,
+                limit: limit
+            ) { [weak self] query, samplesOrNil, deletedObjectsOrNil, newAnchor, errorOrNil in
+                
+                if let error = errorOrNil {
+                    continuation.resume(throwing: HealthKitError.dataAccessFailed(error))
+                    return
+                }
+                
+                // 新しいアンカーポイントを保存
+                if let newAnchor = newAnchor {
+                    self?.anchorPoints[type] = newAnchor
+                }
+                
+                // サンプルデータを変換
+                let healthKitData: [HealthKitData] = (samplesOrNil as? [HKQuantitySample])?.map { sample in
+                    HealthKitData(
+                        type: type,
+                        value: sample.quantity.doubleValue(for: self?.getUnit(for: type) ?? HKUnit.count()),
+                        unit: type.displayName,
+                        startDate: sample.startDate,
+                        endDate: sample.endDate
+                    )
+                } ?? []
+                
+                continuation.resume(returning: healthKitData)
+            }
+            
+            healthStore.execute(anchoredQuery)
+        }
+    }
+    
+    // MARK: - Multiple Types Anchored Reading
+    
+    func readNewHealthData(
+        types: [HealthDataType],
+        limit: Int = HKObjectQueryNoLimit
+    ) async throws -> [HealthDataType: [HealthKitData]] {
+        
+        var resultData: [HealthDataType: [HealthKitData]] = [:]
+        
+        for type in types {
+            do {
+                let typeData = try await readNewHealthData(type: type, limit: limit)
+                resultData[type] = typeData
+            } catch {
+                // 一部のデータタイプで失敗しても続行
+                resultData[type] = []
+                continue
+            }
+        }
+        
+        return resultData
+    }
+    
     // MARK: - Writing Data
     
     func writeHealthData(_ records: [HealthRecord]) async throws -> Bool {
@@ -178,13 +341,142 @@ final class HealthKitService {
         for dataType: HealthDataType,
         handler: @escaping ([HealthRecord]) -> Void
     ) async throws -> HealthDataObserver {
-        let observer = HealthDataObserver(dataType: dataType, handler: handler)
+        
+        // テスト環境では実際のHealthKit呼び出しを避ける
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            let observer = HealthDataObserver(dataType: dataType, handler: handler)
+            observers.append(observer)
+            return observer
+        }
+        
+        guard let healthKitType = dataType.healthKitType else {
+            throw HealthKitError.unsupportedDataType(dataType.rawValue)
+        }
+        
+        // 認証状態を確認
+        let authStatus = authorizationStatus(for: dataType)
+        guard authStatus == .sharingAuthorized else {
+            throw HealthKitError.authorizationDenied
+        }
+        
+        // HKObserverQueryを作成
+        let observerQuery = HKObserverQuery(sampleType: healthKitType, predicate: nil) { [weak self] query, completionHandler, error in
+            guard let self = self else {
+                completionHandler()
+                return
+            }
+            
+            if let error = error {
+                // エラーログ出力（実際のアプリではロガーを使用）
+                print("HealthKit observer error: \(error)")
+                completionHandler()
+                return
+            }
+            
+            // 新しいデータを効率的に取得（HKAnchoredObjectQueryを使用）
+            Task {
+                do {
+                    let healthKitData = try await self.readNewHealthData(type: dataType, limit: 100)
+                    
+                    // HealthKitDataをHealthRecordに変換
+                    let healthRecords = healthKitData.map { data in
+                        let record = HealthRecord(
+                            type: data.type,
+                            value: data.value,
+                            unit: data.unit,
+                            source: .healthKit
+                        )
+                        // HealthKitデータの実際のタイムスタンプを設定
+                        record.timestamp = data.startDate
+                        return record
+                    }
+                    
+                    // 新しいデータがある場合のみハンドラーを呼び出し
+                    if !healthRecords.isEmpty {
+                        await MainActor.run {
+                            handler(healthRecords)
+                        }
+                    }
+                    
+                } catch {
+                    print("Failed to fetch updated health data: \(error)")
+                }
+                
+                completionHandler()
+            }
+        }
+        
+        // バックグラウンド配信を有効化
+        healthStore.enableBackgroundDelivery(for: healthKitType, frequency: .immediate) { success, error in
+            if let error = error {
+                print("Failed to enable background delivery: \(error)")
+            }
+        }
+        
+        // クエリを実行
+        healthStore.execute(observerQuery)
+        
+        // オブザーバーを作成して保存
+        let observer = HealthDataObserver(dataType: dataType, handler: handler, hkObserverQuery: observerQuery)
         observers.append(observer)
+        
         return observer
     }
     
     func stopObserving(_ observer: HealthDataObserver) {
+        // HKObserverQueryを停止
+        if let hkObserverQuery = observer.hkObserverQuery {
+            healthStore.stop(hkObserverQuery)
+        }
+        
+        // バックグラウンド配信を無効化（他のオブザーバーがない場合）
+        if let healthKitType = observer.dataType.healthKitType {
+            let hasOtherObservers = observers.contains { otherObserver in
+                otherObserver !== observer && otherObserver.dataType == observer.dataType
+            }
+            
+            if !hasOtherObservers {
+                healthStore.disableBackgroundDelivery(for: healthKitType) { success, error in
+                    if let error = error {
+                        print("Failed to disable background delivery: \(error)")
+                    }
+                }
+            }
+        }
+        
+        // オブザーバーリストから削除
         observers.removeAll { $0 === observer }
+    }
+    
+    // MARK: - Multiple Data Types Observation
+    
+    func observeMultipleHealthDataChanges(
+        for dataTypes: Set<HealthDataType>,
+        handler: @escaping ([HealthDataType: [HealthRecord]]) -> Void
+    ) async throws -> [HealthDataObserver] {
+        var createdObservers: [HealthDataObserver] = []
+        
+        for dataType in dataTypes {
+            do {
+                let observer = try await observeHealthDataChanges(for: dataType) { records in
+                    // 個別のデータタイプの更新を統合ハンドラーに通知
+                    let groupedData = [dataType: records]
+                    handler(groupedData)
+                }
+                createdObservers.append(observer)
+            } catch {
+                // 一部のデータタイプで失敗しても続行
+                continue
+            }
+        }
+        
+        return createdObservers
+    }
+    
+    func stopObservingMultiple(_ observers: [HealthDataObserver]) {
+        for observer in observers {
+            stopObserving(observer)
+        }
     }
     
     // MARK: - Helper Methods

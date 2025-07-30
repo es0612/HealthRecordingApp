@@ -16,6 +16,21 @@ protocol HealthKitServiceProtocol {
     /// - Throws: HealthKitError if authorization request fails
     func requestAuthorization(for dataTypes: Set<HealthDataType>) async throws -> Bool
     
+    /// Check authorization status for a specific data type
+    /// - Parameter dataType: The health data type to check
+    /// - Returns: Current authorization status for the data type
+    func authorizationStatus(for dataType: HealthDataType) -> HealthKitAuthorizationStatus
+    
+    /// Check if a specific data type is authorized
+    /// - Parameter dataType: The health data type to check
+    /// - Returns: Boolean indicating if the data type is authorized
+    func isAuthorized(for dataType: HealthDataType) -> Bool
+    
+    /// Get authorization status for multiple data types
+    /// - Parameter dataTypes: Set of health data types to check
+    /// - Returns: Dictionary mapping each data type to its authorization status
+    func authorizationStatus(for dataTypes: Set<HealthDataType>) -> [HealthDataType: HealthKitAuthorizationStatus]
+    
     /// Read health data for a specific type within a date range
     /// - Parameters:
     ///   - type: The type of health data to read

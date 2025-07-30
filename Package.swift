@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "HealthRecordingApp",
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    platforms: [.iOS(.v17)],
     dependencies: [
         .package(url: "https://github.com/apple/swift-testing.git", from: "0.4.0")
     ],
@@ -14,9 +14,7 @@ let package = Package(
             exclude: [
                 "Assets.xcassets",
                 "Info.plist",
-                "HealthRecordingApp.entitlements",
-                "ContentView.swift",
-                "Domain/Services/InsightEngine"
+                "HealthRecordingApp.entitlements"
             ]
         ),
         .testTarget(

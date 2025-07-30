@@ -61,7 +61,7 @@ enum AnomalySeverity: String, CaseIterable, Codable {
 
 struct TrendAnalysis: Codable {
     let dataType: HealthDataType
-    let timeRange: DateRange
+    let timeRange: TrendTimeRange
     let trendPoints: [TrendPoint]
     let direction: TrendDirection
     let slope: Double
@@ -72,7 +72,7 @@ struct TrendAnalysis: Codable {
     
     init(
         dataType: HealthDataType,
-        timeRange: DateRange,
+        timeRange: TrendTimeRange,
         trendPoints: [TrendPoint],
         direction: TrendDirection,
         slope: Double,
@@ -146,7 +146,7 @@ struct TrendPrediction: Codable {
     }
 }
 
-enum TimeRange: String, CaseIterable, Codable {
+enum TrendTimeRange: String, CaseIterable, Codable {
     case week = "week"
     case month = "month"
     case quarter = "quarter"

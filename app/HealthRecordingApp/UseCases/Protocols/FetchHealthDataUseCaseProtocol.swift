@@ -83,34 +83,7 @@ protocol FetchHealthDataUseCaseProtocol {
 }
 
 // MARK: - Supporting Data Structures
-
-/// Date range for filtering health data
-struct DateRange: Codable {
-    let startDate: Date
-    let endDate: Date
-    
-    init(startDate: Date, endDate: Date) throws {
-        guard startDate <= endDate else {
-            throw ValidationError.invalidInput(
-                "DateRange", 
-                value: "\(startDate) - \(endDate)",
-                reason: "Start date must be before or equal to end date"
-            )
-        }
-        self.startDate = startDate
-        self.endDate = endDate
-    }
-    
-    /// Check if a date falls within this range
-    func contains(_ date: Date) -> Bool {
-        return date >= startDate && date <= endDate
-    }
-    
-    /// Duration of the date range in days
-    var durationInDays: Int {
-        return Calendar.current.dateComponents([.day], from: startDate, to: endDate).day ?? 0
-    }
-}
+// Note: DateRange is defined in CommonTypes.swift to avoid duplication
 
 /// Health data statistics for analysis
 struct HealthDataStatistics {
@@ -263,12 +236,7 @@ enum SortOrder {
     case descending
 }
 
-/// Export format options
-enum ExportFormat {
-    case json
-    case csv
-    case pdf
-}
+// Note: ExportFormat is defined in CommonTypes.swift to avoid duplication
 
 /// Export result containing data and metadata
 struct ExportResult {

@@ -137,7 +137,7 @@ final class FetchHealthDataUseCase: FetchHealthDataUseCaseProtocol {
         logger.info("Fetching records grouped by day", context: [
             "user_id": user.id.uuidString,
             "data_type": type.rawValue,
-            "date_range_days": dateRange.durationInDays
+            "date_range_days": dateRange.dayCount
         ])
         
         do {
@@ -187,7 +187,7 @@ final class FetchHealthDataUseCase: FetchHealthDataUseCaseProtocol {
         logger.info("Calculating health data statistics", context: [
             "user_id": user.id.uuidString,
             "data_type": type.rawValue,
-            "date_range_days": dateRange.durationInDays
+            "date_range_days": dateRange.dayCount
         ])
         
         do {
@@ -364,8 +364,6 @@ final class FetchHealthDataUseCase: FetchHealthDataUseCaseProtocol {
             return try generateJSONExport(records: records, filename: baseFilename)
         case .csv:
             return try generateCSVExport(records: records, filename: baseFilename)
-        case .pdf:
-            return try generatePDFExport(records: records, filename: baseFilename)
         }
     }
     

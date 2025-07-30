@@ -127,3 +127,108 @@ final class Goal {
         updateCurrentValue(from: user.healthRecords)
     }
 }
+
+// MARK: - Goal Suggestion
+
+struct GoalSuggestion: Identifiable, Codable {
+    let id = UUID()
+    let type: HealthDataType
+    let suggestedTargetValue: Double
+    let suggestedDeadline: Date
+    let title: String
+    let description: String
+    let reasoning: String
+    let confidenceScore: Double // 0.0 to 1.0
+    let isRecommended: Bool
+    let basedOnData: [String] // What data this suggestion is based on
+    let estimatedDifficulty: GoalDifficulty
+    let priority: GoalPriority
+    
+    init(
+        type: HealthDataType,
+        suggestedTargetValue: Double,
+        suggestedDeadline: Date,
+        title: String,
+        description: String,
+        reasoning: String,
+        confidenceScore: Double,
+        isRecommended: Bool = true,
+        basedOnData: [String] = [],
+        estimatedDifficulty: GoalDifficulty = .moderate,
+        priority: GoalPriority = .medium
+    ) {
+        self.type = type
+        self.suggestedTargetValue = suggestedTargetValue
+        self.suggestedDeadline = suggestedDeadline
+        self.title = title
+        self.description = description
+        self.reasoning = reasoning
+        self.confidenceScore = confidenceScore
+        self.isRecommended = isRecommended
+        self.basedOnData = basedOnData
+        self.estimatedDifficulty = estimatedDifficulty
+        self.priority = priority
+    }
+    
+    // Convert suggestion to actual Goal
+    func createGoal() throws -> Goal {
+        return try Goal(
+            type: type,
+            targetValue: suggestedTargetValue,
+            deadline: suggestedDeadline,
+            goalDescription: description
+        )
+    }
+}
+
+// MARK: - Supporting Enums
+
+enum GoalDifficulty: String, CaseIterable, Codable {
+    case easy = "easy"
+    case moderate = "moderate"
+    case challenging = "challenging"
+    case difficult = "difficult"
+    
+    var displayName: String {
+        switch self {
+        case .easy: return "簡単"
+        case .moderate: return "適度"
+        case .challenging: return "挑戦的"
+        case .difficult: return "困難"
+        }
+    }
+    
+    var color: String { // For UI representation
+        switch self {
+        case .easy: return "green"
+        case .moderate: return "blue"
+        case .challenging: return "orange"
+        case .difficult: return "red"
+        }
+    }
+}
+
+enum GoalPriority: String, CaseIterable, Codable {
+    case low = "low"
+    case medium = "medium"
+    case high = "high"
+    case critical = "critical"
+    
+    var displayName: String {
+        switch self {
+        case .low: return "低"
+        case .medium: return "中"
+        case .high: return "高"
+        case .critical: return "重要"
+        }
+    }
+    
+    var sortOrder: Int {
+        switch self {
+        case .low: return 1
+        case .medium: return 2
+        case .high: return 3
+        case .critical: return 4
+        }
+    }
+}

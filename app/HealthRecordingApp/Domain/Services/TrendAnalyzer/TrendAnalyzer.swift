@@ -2,6 +2,35 @@ import Foundation
 
 final class TrendAnalyzer: TrendAnalyzerProtocol {
     
+    // MARK: - Helper Methods
+    
+    private func convertToTrendTimeRange(_ timeRange: TimeRange) -> TrendTimeRange {
+        switch timeRange {
+        case .week:
+            return .week
+        case .month:
+            return .month
+        case .threeMonths, .sixMonths:
+            return .quarter
+        case .year:
+            return .year
+        }
+    }
+    
+    private func convertDateRangeToTrendTimeRange(_ dateRange: DateRange) -> TrendTimeRange {
+        let dayCount = dateRange.dayCount
+        
+        if dayCount <= 7 {
+            return .week
+        } else if dayCount <= 31 {
+            return .month
+        } else if dayCount <= 120 {
+            return .quarter
+        } else {
+            return .year
+        }
+    }
+    
     private let logger: AILoggerProtocol
     
     init(logger: AILoggerProtocol) {
@@ -24,7 +53,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
         do {
             // Filter records by time range
             let endDate = Date()
-            guard let startDate = Calendar.current.date(byAdding: .day, value: -timeRange.days, to: endDate) else {
+            guard let startDate = Calendar.current.date(byAdding: .day, value: -timeRange.dayCount, to: endDate) else {
                 throw ValidationError.invalidInput("TrendAnalyzer", value: "date_calculation", reason: "Unable to calculate start date from time range")
             }
             let dateRange = try DateRange(startDate: startDate, endDate: endDate)
@@ -60,7 +89,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
             
             let analysis = TrendAnalysis(
                 dataType: firstRecord.type,
-                timeRange: dateRange,
+                timeRange: convertToTrendTimeRange(timeRange),
                 trendPoints: trendPoints,
                 direction: direction,
                 slope: regression.slope,
@@ -127,7 +156,7 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
             
             let analysis = TrendAnalysis(
                 dataType: firstRecord.type,
-                timeRange: dateRange,
+                timeRange: convertDateRangeToTrendTimeRange(dateRange),
                 trendPoints: trendPoints,
                 direction: direction,
                 slope: regression.slope,
