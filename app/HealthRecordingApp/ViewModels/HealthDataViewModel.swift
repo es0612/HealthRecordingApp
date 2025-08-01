@@ -6,6 +6,7 @@ import Foundation
 final class HealthDataViewModel {
     // MARK: - Published Properties
     var healthRecords: [HealthRecord] = []
+    var allHealthRecords: [HealthRecord] = []
     var isLoading = false
     var errorMessage: String?
     var isSyncing = false
@@ -13,9 +14,16 @@ final class HealthDataViewModel {
     var selectedDataType: HealthDataType = .weight
     var selectedDateRange: DateRangeOption = .week
     
+    // MARK: - Integration Properties
+    var dataQualityScore: Double = 0.0
+    var healthKitRecordsCount: Int = 0
+    var manualRecordsCount: Int = 0
+    var duplicatesRemoved: Int = 0
+    var integrationMetrics: IntegrationMetrics?
+    
     // MARK: - Computed Properties
     var filteredRecords: [HealthRecord] {
-        let filtered = healthRecords.filter { $0.type == selectedDataType }
+        let filtered = allHealthRecords.filter { $0.type == selectedDataType }
         return filterByDateRange(records: filtered, dateRange: selectedDateRange)
     }
     
@@ -28,34 +36,70 @@ final class HealthDataViewModel {
     }
     
     var hasData: Bool {
-        !healthRecords.isEmpty
+        !allHealthRecords.isEmpty
+    }
+    
+    var dataSourceSummary: String {
+        let total = allHealthRecords.count
+        guard total > 0 else { return "データなし" }
+        
+        let healthKitRatio = Double(healthKitRecordsCount) / Double(total) * 100
+        let manualRatio = Double(manualRecordsCount) / Double(total) * 100
+        
+        return String(format: "HealthKit: %.0f%% (%d件), 手動: %.0f%% (%d件)", 
+                     healthKitRatio, healthKitRecordsCount, 
+                     manualRatio, manualRecordsCount)
     }
     
     // MARK: - Dependencies
+    private let integratedHealthDataService: IntegratedHealthDataServiceProtocol
     private let recordHealthDataUseCase: RecordHealthDataUseCaseProtocol
     private let fetchHealthDataUseCase: FetchHealthDataUseCaseProtocol
     private let logger: AILoggerProtocol
     
     // MARK: - Initialization
     init(
+        integratedHealthDataService: IntegratedHealthDataServiceProtocol,
         recordHealthDataUseCase: RecordHealthDataUseCaseProtocol,
         fetchHealthDataUseCase: FetchHealthDataUseCaseProtocol,
         logger: AILoggerProtocol = AILogger()
     ) {
+        self.integratedHealthDataService = integratedHealthDataService
         self.recordHealthDataUseCase = recordHealthDataUseCase
         self.fetchHealthDataUseCase = fetchHealthDataUseCase
         self.logger = logger
         
-        logger.debug("HealthDataViewModel initialized", context: [
+        logger.debug("HealthDataViewModel initialized with integrated service", context: [
             "selectedDataType": selectedDataType.rawValue,
             "selectedDateRange": selectedDateRange.rawValue
         ])
     }
     
+    // Convenience initializer for backward compatibility
+    convenience init(
+        recordHealthDataUseCase: RecordHealthDataUseCaseProtocol,
+        fetchHealthDataUseCase: FetchHealthDataUseCaseProtocol,
+        logger: AILoggerProtocol = AILogger()
+    ) {
+        let integratedService = IntegratedHealthDataService(
+            fetchHealthDataUseCase: fetchHealthDataUseCase,
+            recordHealthDataUseCase: recordHealthDataUseCase,
+            healthKitService: recordHealthDataUseCase.healthKitService,
+            logger: logger
+        )
+        
+        self.init(
+            integratedHealthDataService: integratedService,
+            recordHealthDataUseCase: recordHealthDataUseCase,
+            fetchHealthDataUseCase: fetchHealthDataUseCase,
+            logger: logger
+        )
+    }
+    
     // MARK: - Data Loading
     @MainActor
     func loadHealthData() async {
-        logger.debug("Starting health data load", context: nil)
+        logger.debug("Starting integrated health data load", context: nil)
         guard !isLoading else {
             logger.warning("Load already in progress, skipping", context: nil)
             return
@@ -67,32 +111,44 @@ final class HealthDataViewModel {
         
         do {
             let startTime = Date()
-            logger.info("Fetching health data", context: [
+            logger.info("Fetching integrated health data", context: [
                 "dataType": selectedDataType.rawValue,
                 "dateRange": selectedDateRange.rawValue
             ])
             
             let mockUser = createMockUser()
-            let records = try await fetchHealthDataUseCase.fetchHealthRecords(
+            let result = try await integratedHealthDataService.fetchIntegratedHealthData(
                 for: mockUser,
-                type: nil,
+                types: nil, // Fetch all types
                 dateRange: nil,
                 limit: nil
             )
-            healthRecords = records
+            
+            // Update all health records and integration metrics
+            allHealthRecords = result.records
+            healthRecords = result.records // For backward compatibility
+            dataQualityScore = result.dataQualityScore
+            healthKitRecordsCount = result.healthKitRecords
+            manualRecordsCount = result.manualRecords
+            duplicatesRemoved = result.duplicatesRemoved
+            integrationMetrics = result.integrationMetrics
             
             let duration = Date().timeIntervalSince(startTime)
-            logger.logPerformance("load_health_data", duration: duration, success: true)
-            logger.info("Successfully loaded health data", context: [
-                "recordCount": records.count,
+            logger.logPerformance("load_integrated_health_data", duration: duration, success: true)
+            logger.info("Successfully loaded integrated health data", context: [
+                "totalRecords": result.totalRecords,
+                "healthKitRecords": result.healthKitRecords,
+                "manualRecords": result.manualRecords,
+                "duplicatesRemoved": result.duplicatesRemoved,
+                "dataQualityScore": result.dataQualityScore,
                 "duration_ms": Int(duration * 1000)
             ])
             
         } catch {
             let duration = Date().timeIntervalSince(Date())
-            logger.logPerformance("load_health_data", duration: duration, success: false)
+            logger.logPerformance("load_integrated_health_data", duration: duration, success: false)
             logger.error(error, context: [
-                "operation": "load_health_data",
+                "operation": "load_integrated_health_data",
                 "dataType": selectedDataType.rawValue
             ])
             
@@ -113,7 +169,7 @@ final class HealthDataViewModel {
     // MARK: - HealthKit Synchronization
     @MainActor
     func syncWithHealthKit() async {
-        logger.debug("Starting HealthKit synchronization", context: nil)
+        logger.debug("Starting integrated HealthKit synchronization", context: nil)
         guard !isSyncing else {
             logger.warning("Sync already in progress, skipping", context: nil)
             return
@@ -125,32 +181,139 @@ final class HealthDataViewModel {
         
         do {
             let startTime = Date()
-            logger.info("Synchronizing with HealthKit", context: nil)
+            logger.info("Synchronizing and merging all data sources", context: nil)
             
-            // For now, we use a mock user - this will be replaced with actual user management
             let mockUser = createMockUser()
-            _ = try await recordHealthDataUseCase.recordFromHealthKit(for: mockUser)
+            let result = try await integratedHealthDataService.syncAndMergeAllSources(for: mockUser)
             
-            // Reload data after sync
+            // Update integration metrics from sync result
+            dataQualityScore = result.dataQualityScore
+            healthKitRecordsCount = result.healthKitRecords
+            manualRecordsCount = result.manualRecords
+            duplicatesRemoved = result.duplicatesRemoved
+            
+            // Reload data after sync to get the integrated view
             await loadHealthData()
             
             lastSyncDate = Date()
             
             let duration = Date().timeIntervalSince(startTime)
-            logger.logPerformance("healthkit_sync", duration: duration, success: true)
-            logger.info("Successfully synchronized with HealthKit", context: [
-                "newRecordCount": healthRecords.count,
+            logger.logPerformance("integrated_sync", duration: duration, success: true)
+            logger.info("Successfully synchronized and merged all sources", context: [
+                "totalProcessed": result.totalRecordsProcessed,
+                "finalIntegrated": result.finalIntegratedRecords,
+                "newHealthKitRecords": result.newHealthKitRecords,
+                "duplicatesRemoved": result.duplicatesRemoved,
+                "dataQualityScore": result.dataQualityScore,
                 "duration_ms": Int(duration * 1000)
             ])
             
         } catch {
             let duration = Date().timeIntervalSince(Date())
-            logger.logPerformance("healthkit_sync", duration: duration, success: false)
+            logger.logPerformance("integrated_sync", duration: duration, success: false)
             logger.error(error, context: [
-                "operation": "healthkit_sync"
+                "operation": "integrated_sync"
             ])
             
             errorMessage = handleError(error)
+        }
+    }
+    
+    // MARK: - Integration-Specific Methods
+    
+    @MainActor
+    func refreshAllData() async {
+        logger.logUserAction("refresh_all_data", parameters: [
+            "currentDataQualityScore": dataQualityScore,
+            "currentTotalRecords": allHealthRecords.count
+        ])
+        
+        await syncWithHealthKit()
+    }
+    
+    @MainActor
+    func loadHealthRecords(for dataType: HealthDataType) async {
+        logger.debug("Loading records for specific data type", context: [
+            "dataType": dataType.rawValue
+        ])
+        
+        guard !isLoading else { return }
+        
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        
+        do {
+            let mockUser = createMockUser()
+            let result = try await integratedHealthDataService.fetchIntegratedHealthData(
+                for: mockUser,
+                types: [dataType],
+                dateRange: nil,
+                limit: 100
+            )
+            
+            // Update records for this specific type while preserving others
+            let existingOtherTypes = allHealthRecords.filter { $0.type != dataType }
+            allHealthRecords = existingOtherTypes + result.records
+            healthRecords = allHealthRecords // For backward compatibility
+            
+            // Update integration metrics
+            dataQualityScore = result.dataQualityScore
+            
+            logger.info("Successfully loaded records for data type", context: [
+                "dataType": dataType.rawValue,
+                "recordCount": result.totalRecords,
+                "qualityScore": result.dataQualityScore
+            ])
+            
+        } catch {
+            logger.error(error, context: [
+                "operation": "load_records_for_type",
+                "dataType": dataType.rawValue
+            ])
+            errorMessage = handleError(error)
+        }
+    }
+    
+    func getLatestRecord(for dataType: HealthDataType) -> HealthRecord? {
+        return allHealthRecords
+            .filter { $0.type == dataType }
+            .sorted { $0.timestamp > $1.timestamp }
+            .first
+    }
+    
+    @MainActor
+    func getDataQualityMetrics(for dataType: HealthDataType) async -> DataQualityMetrics? {
+        logger.debug("Getting data quality metrics", context: [
+            "dataType": dataType.rawValue
+        ])
+        
+        do {
+            let mockUser = createMockUser()
+            let dateRange = try selectedDateRange.toDateRange()
+            
+            let metrics = try await integratedHealthDataService.getDataQualityMetrics(
+                for: mockUser,
+                type: dataType,
+                dateRange: dateRange
+            )
+            
+            logger.info("Successfully retrieved data quality metrics", context: [
+                "dataType": dataType.rawValue,
+                "completenessScore": metrics.completenessScore,
+                "accuracyScore": metrics.accuracyScore,
+                "consistencyScore": metrics.consistencyScore,
+                "overallQuality": metrics.overallQuality
+            ])
+            
+            return metrics
+            
+        } catch {
+            logger.error(error, context: [
+                "operation": "get_data_quality_metrics",
+                "dataType": dataType.rawValue
+            ])
+            return nil
         }
     }
     

@@ -208,26 +208,7 @@ struct GoalsView: View {
     }
 }
 
-struct HealthDataView: View {
-    let viewModel: HealthDataViewModel
-    
-    var body: some View {
-        VStack {
-            Text("健康データ")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            
-            Text("記録数: \(viewModel.filteredRecords.count)")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .navigationTitle("データ")
-        .navigationBarTitleDisplayMode(.large)
-        .task {
-            await viewModel.loadHealthData()
-        }
-    }
-}
+// HealthDataView is now implemented in Views/Data/HealthDataView.swift
 
 struct SettingsView: View {
     var body: some View {
