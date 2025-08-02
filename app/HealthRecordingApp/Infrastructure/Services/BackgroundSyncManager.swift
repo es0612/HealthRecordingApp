@@ -1,7 +1,6 @@
 import Foundation
 import HealthKit
 import BackgroundTasks
-import UIKit
 
 // MARK: - Background Sync Manager
 

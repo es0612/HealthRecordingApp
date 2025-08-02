@@ -61,7 +61,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
         ])
         
         // Collect all validation errors
-        var errors: [ValidationError] = []
+        var errors: [DataValidationError] = []
         
         // 1. Validate value
         let valueResult = validateValue(data.value, for: data.type)
@@ -105,11 +105,11 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
     
     func validateValue(_ value: Double, for dataType: HealthDataType) -> ValidationResult {
         let constraints = getConstraints(for: dataType)
-        var errors: [ValidationError] = []
+        var errors: [DataValidationError] = []
         
         // Basic range validation
         if value < constraints.minimumValue {
-            errors.append(ValidationError.valueTooLow(
+            errors.append(DataValidationError.valueTooLow(
                 value: value,
                 minimum: constraints.minimumValue,
                 dataType: dataType,
@@ -118,7 +118,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
         }
         
         if value > constraints.maximumValue {
-            errors.append(ValidationError.valueTooHigh(
+            errors.append(DataValidationError.valueTooHigh(
                 value: value,
                 maximum: constraints.maximumValue,
                 dataType: dataType,
@@ -130,7 +130,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
         if !constraints.allowedPrecisions.isEmpty {
             let decimalPlaces = getDecimalPlaces(value)
             if !constraints.allowedPrecisions.contains(decimalPlaces) {
-                errors.append(ValidationError.invalidPrecision(
+                errors.append(DataValidationError.invalidPrecision(
                     value: value,
                     allowedPrecisions: constraints.allowedPrecisions,
                     dataType: dataType,
@@ -143,7 +143,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
         switch dataType {
         case .weight:
             if value > 0 && value < 20 {
-                errors.append(ValidationError.suspiciousValue(
+                errors.append(DataValidationError.suspiciousValue(
                     value: value,
                     dataType: dataType,
                     reason: "体重が20kg未満です",
@@ -153,7 +153,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
             
         case .steps:
             if value > 50000 {
-                errors.append(ValidationError.suspiciousValue(
+                errors.append(DataValidationError.suspiciousValue(
                     value: value,
                     dataType: dataType,
                     reason: "1日の歩数が50,000歩を超えています",
@@ -163,7 +163,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
             
         case .calories:
             if value > 5000 {
-                errors.append(ValidationError.suspiciousValue(
+                errors.append(DataValidationError.suspiciousValue(
                     value: value,
                     dataType: dataType,
                     reason: "1日の消費カロリーが5,000kcalを超えています",
@@ -173,7 +173,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
             
         case .heartRate:
             if value < 40 {
-                errors.append(ValidationError.suspiciousValue(
+                errors.append(DataValidationError.suspiciousValue(
                     value: value,
                     dataType: dataType,
                     reason: "心拍数が40bpm未満です",
@@ -181,7 +181,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
                 ))
             }
             if value > 180 {
-                errors.append(ValidationError.suspiciousValue(
+                errors.append(DataValidationError.suspiciousValue(
                     value: value,
                     dataType: dataType,
                     reason: "心拍数が180bpmを超えています",
@@ -191,7 +191,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
             
         case .bloodGlucose:
             if value < 50 {
-                errors.append(ValidationError.suspiciousValue(
+                errors.append(DataValidationError.suspiciousValue(
                     value: value,
                     dataType: dataType,
                     reason: "血糖値が50mg/dL未満です",
@@ -199,7 +199,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
                 ))
             }
             if value > 400 {
-                errors.append(ValidationError.suspiciousValue(
+                errors.append(DataValidationError.suspiciousValue(
                     value: value,
                     dataType: dataType,
                     reason: "血糖値が400mg/dLを超えています",
@@ -212,7 +212,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
     }
     
     func validateTimestamp(_ timestamp: Date) -> ValidationResult {
-        var errors: [ValidationError] = []
+        var errors: [DataValidationError] = []
         
         let now = Date()
         let maxPastDate = Calendar.current.date(byAdding: .year, value: -5, to: now) ?? now
@@ -220,7 +220,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
         
         // Future date validation
         if timestamp > maxFutureDate {
-            errors.append(ValidationError.timestampInFuture(
+            errors.append(DataValidationError.timestampInFuture(
                 timestamp: timestamp,
                 suggestion: "未来の日時は入力できません"
             ))
@@ -228,7 +228,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
         
         // Too old data validation
         if timestamp < maxPastDate {
-            errors.append(ValidationError.timestampTooOld(
+            errors.append(DataValidationError.timestampTooOld(
                 timestamp: timestamp,
                 maxAge: 5,
                 suggestion: "5年以上前のデータは入力できません"
@@ -242,7 +242,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
         let constraints = getConstraints(for: dataType)
         
         if !constraints.allowedUnits.contains(unit) {
-            return .failure([ValidationError.invalidUnit(
+            return .failure([DataValidationError.invalidUnit(
                 unit: unit,
                 allowedUnits: constraints.allowedUnits,
                 dataType: dataType,
@@ -384,7 +384,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
     }
     
     func validateDataIntegrity(_ data: HealthDataInput, context: ValidationContext?) -> ValidationResult {
-        var errors: [ValidationError] = []
+        var errors: [DataValidationError] = []
         
         // Check for reasonable data patterns
         if let context = context {
@@ -421,8 +421,8 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
         return (timeFactor * 0.6 + valueFactor * 0.4)
     }
     
-    private func validateWithContext(_ data: HealthDataInput, context: ValidationContext) -> [ValidationError] {
-        var errors: [ValidationError] = []
+    private func validateWithContext(_ data: HealthDataInput, context: ValidationContext) -> [DataValidationError] {
+        var errors: [DataValidationError] = []
         
         // Example: Check if weight change is reasonable
         if data.type == .weight, let lastWeight = context.lastWeightRecord {
@@ -431,7 +431,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
             let maxReasonableChange = Double(daysDifference) * 0.5 // 0.5kg per day max
             
             if weightChange > maxReasonableChange && daysDifference < 30 {
-                errors.append(ValidationError.suspiciousValue(
+                errors.append(DataValidationError.suspiciousValue(
                     value: data.value,
                     dataType: data.type,
                     reason: "前回の記録から\(String(format: "%.1f", weightChange))kgの変化があります",
@@ -449,7 +449,7 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
         case .weight:
             // Check for extremely unusual weight values
             if data.value < 30 || data.value > 250 {
-                return .failure([ValidationError.suspiciousValue(
+                return .failure([DataValidationError.suspiciousValue(
                     value: data.value,
                     dataType: data.type,
                     reason: "一般的ではない体重の値です",
@@ -507,7 +507,7 @@ struct ValidationContext {
 
 enum ValidationResult {
     case success
-    case failure([ValidationError])
+    case failure([DataValidationError])
 }
 
 struct DuplicateDetectionResult {
@@ -523,9 +523,9 @@ enum DuplicateRecommendation {
     case reject
 }
 
-// MARK: - Enhanced ValidationError
+// MARK: - Data Validation Error
 
-enum ValidationError: Error, LocalizedError, Equatable {
+enum DataValidationError: Error, LocalizedError, Equatable {
     case valueTooLow(value: Double, minimum: Double, dataType: HealthDataType, suggestion: String)
     case valueTooHigh(value: Double, maximum: Double, dataType: HealthDataType, suggestion: String)
     case invalidPrecision(value: Double, allowedPrecisions: [Int], dataType: HealthDataType, suggestion: String)
@@ -575,7 +575,7 @@ enum ValidationError: Error, LocalizedError, Equatable {
     }
     
     // Equatable conformance
-    static func == (lhs: ValidationError, rhs: ValidationError) -> Bool {
+    static func == (lhs: DataValidationError, rhs: DataValidationError) -> Bool {
         switch (lhs, rhs) {
         case (.valueTooLow(let lValue, let lMin, let lType, _), .valueTooLow(let rValue, let rMin, let rType, _)):
             return lValue == rValue && lMin == rMin && lType == rType

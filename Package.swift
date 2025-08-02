@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "HealthRecordingApp",
-    platforms: [.iOS(.v17)],
+    platforms: [.iOS(.v17), .macOS(.v14)],
     dependencies: [
         .package(url: "https://github.com/apple/swift-testing.git", from: "0.4.0")
     ],
