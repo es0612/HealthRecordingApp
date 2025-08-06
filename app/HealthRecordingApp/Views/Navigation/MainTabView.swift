@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct MainTabView: View {
     // MARK: - ViewModels (Shared across tabs)
@@ -122,6 +125,7 @@ struct MainTabView: View {
     }
     
     private func setupTabBarAppearance() {
+        #if os(iOS)
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor.systemBackground
@@ -135,6 +139,7 @@ struct MainTabView: View {
         // Apply appearance
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
+        #endif
     }
 }
 
@@ -185,7 +190,9 @@ struct TrendsView: View {
                 .foregroundColor(.secondary)
         }
         .navigationTitle("トレンド")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
     }
 }
 
@@ -204,7 +211,9 @@ struct GoalsView: View {
                 .foregroundColor(.secondary)
         }
         .navigationTitle("目標")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
     }
 }
 
@@ -268,7 +277,9 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("設定")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
     }
 }
 
@@ -308,7 +319,9 @@ struct OnboardingFlow: View {
                     CompleteStep(onComplete: onComplete)
                         .tag(3)
                 }
+                #if os(iOS)
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                #endif
                 
                 // Navigation
                 HStack {
@@ -333,7 +346,11 @@ struct OnboardingFlow: View {
                 }
                 .padding()
             }
+            #if os(iOS)
             .navigationBarHidden(true)
+            #else
+            .navigationBarBackButtonHidden(true)
+            #endif
         }
         .sheet(isPresented: $showingHealthKitPermission) {
             HealthKitPermissionView(

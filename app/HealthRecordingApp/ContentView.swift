@@ -20,7 +20,7 @@ struct ContentView: View {
     private let logger = AILogger()
     
     var body: some View {
-        Group {
+        ZStack {
             if isLoading {
                 LoadingView(message: "アプリを初期化中...")
             } else if let error = initializationError {
@@ -28,7 +28,7 @@ struct ContentView: View {
                     error: error,
                     title: "初期化エラー",
                     message: "アプリの初期化に失敗しました。",
-                    primaryAction: ErrorAction("再試行") {
+                    primaryAction: UIErrorAction("再試行") {
                         Task {
                             await initializeApp()
                         }

@@ -34,7 +34,12 @@ struct DashboardView: View {
                 }
             }
             .sheet(isPresented: $showingHealthKitPermissions) {
-                HealthKitPermissionView()
+                HealthKitPermissionView(
+                    authManager: HealthKitAuthenticationManager(),
+                    onCompletion: { success in
+                        showingHealthKitPermissions = false
+                    }
+                )
             }
             .refreshable {
                 await refreshData()

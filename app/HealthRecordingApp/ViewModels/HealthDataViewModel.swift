@@ -84,7 +84,7 @@ final class HealthDataViewModel {
         let integratedService = IntegratedHealthDataService(
             fetchHealthDataUseCase: fetchHealthDataUseCase,
             recordHealthDataUseCase: recordHealthDataUseCase,
-            healthKitService: recordHealthDataUseCase.healthKitService,
+            healthKitService: HealthKitService(),
             logger: logger
         )
         

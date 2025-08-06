@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import BackgroundTasks
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @main
 struct HealthRecordingAppApp: App {
@@ -38,6 +41,7 @@ struct HealthRecordingAppApp: App {
     // MARK: - App Lifecycle Setup
     
     private func setupAppLifecycleHandling() {
+        #if canImport(UIKit)
         // Set up notification observers for app lifecycle events
         NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
@@ -54,6 +58,7 @@ struct HealthRecordingAppApp: App {
         ) { _ in
             backgroundSyncManager.handleAppWillEnterForeground()
         }
+        #endif
         
         // Setup background sync for essential health data types
         Task {

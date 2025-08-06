@@ -324,7 +324,7 @@ enum EnhancedValidationError: UserFriendlyError {
     var technicalDetails: String? {
         switch self {
         case .valueOutOfRange(let value, let range, let dataType, let context):
-            return "Value: \(value), Range: \(\(range)), DataType: \(dataType.rawValue), Context: \(context?.debugDescription ?? "nil")"
+            return "Value: \(value), Range: \(range), DataType: \(dataType.rawValue), Context: \(context?.debugDescription ?? "nil")"
             
         case .invalidFormat(let input, let expectedFormat, let dataType, let context):
             return "Input: '\(input)', Expected: '\(expectedFormat)', DataType: \(dataType.rawValue), Context: \(context?.debugDescription ?? "nil")"

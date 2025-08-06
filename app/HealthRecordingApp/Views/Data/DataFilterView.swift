@@ -23,9 +23,9 @@ struct DataFilterView: View {
             }
             .padding()
             .navigationTitle("データフィルター")
-            .navigationBarTitleDisplayMode(.inline)
+
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") {
                         isPresented = false
                     }
@@ -164,31 +164,14 @@ struct FilterOptionRow: View {
                 }
             }
             .padding()
-            .background(isSelected ? Color.blue : Color(.systemGray6))
+            .background(isSelected ? Color.blue : Color.gray.opacity(0.1))
             .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
 
-// MARK: - HealthDataType Icon Extension
 
-extension HealthDataType {
-    var iconName: String {
-        switch self {
-        case .weight:
-            return "scalemass"
-        case .steps:
-            return "figure.walk"
-        case .calories:
-            return "flame"
-        case .heartRate:
-            return "heart"
-        case .bloodGlucose:
-            return "drop"
-        }
-    }
-}
 
 #Preview {
     DataFilterView(

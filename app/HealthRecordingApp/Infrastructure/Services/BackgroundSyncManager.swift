@@ -1,9 +1,13 @@
 import Foundation
 import HealthKit
+#if canImport(UIKit)
+import UIKit
 import BackgroundTasks
+#endif
 
 // MARK: - Background Sync Manager
 
+#if os(iOS)
 final class BackgroundSyncManager: ObservableObject {
     
     static let shared = BackgroundSyncManager()
@@ -277,3 +281,16 @@ enum BackgroundSyncError: LocalizedError {
         }
     }
 }
+#else
+// Placeholder for non-iOS platforms
+final class BackgroundSyncManager: ObservableObject {
+    static let shared = BackgroundSyncManager()
+    private init() {}
+    func registerBackgroundTasks() {}
+    func setupBackgroundSync(for dataTypes: Set<HealthDataType>) async throws {}
+    func handleAppDidEnterBackground() {}
+    func handleAppWillEnterForeground() {}
+    func stopAllObservers() {}
+    var isBackgroundRefreshEnabled: Bool { false }
+}
+#endif

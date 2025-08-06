@@ -5,16 +5,16 @@ struct ErrorView: View {
     let error: Error
     let title: String?
     let message: String?
-    let primaryAction: ErrorAction?
-    let secondaryAction: ErrorAction?
+    let primaryAction: UIErrorAction?
+    let secondaryAction: UIErrorAction?
     
     // MARK: - Initialization
     init(
         error: Error,
         title: String? = nil,
         message: String? = nil,
-        primaryAction: ErrorAction? = nil,
-        secondaryAction: ErrorAction? = nil
+        primaryAction: UIErrorAction? = nil,
+        secondaryAction: UIErrorAction? = nil
     ) {
         self.error = error
         self.title = title
@@ -69,7 +69,7 @@ struct ErrorView: View {
         return errorCategory.defaultMessage
     }
     
-    private var errorCategory: ErrorCategory {
+    private var errorCategory: UIErrorCategory {
         if let healthAppError = error as? any HealthAppError {
             switch healthAppError {
             case is HealthKitError:
@@ -122,7 +122,7 @@ struct ErrorView: View {
 
 // MARK: - Supporting Types
 
-struct ErrorAction {
+struct UIErrorAction {
     let title: String
     let action: () -> Void
     
@@ -132,7 +132,7 @@ struct ErrorAction {
     }
 }
 
-enum ErrorCategory {
+enum UIErrorCategory {
     case healthKit
     case data
     case network
@@ -192,8 +192,8 @@ struct HealthKitErrorView: View {
             error: error,
             title: "HealthKitアクセスエラー",
             message: "ヘルスケアデータにアクセスできません。設定でアクセス許可を確認してください。",
-            primaryAction: ErrorAction("設定を開く", action: onOpenSettings),
-            secondaryAction: ErrorAction("再試行", action: onRetry)
+            primaryAction: UIErrorAction("設定を開く", action: onOpenSettings),
+            secondaryAction: UIErrorAction("再試行", action: onRetry)
         )
     }
 }
@@ -207,7 +207,7 @@ struct NetworkErrorView: View {
             error: error,
             title: "接続エラー",
             message: "インターネット接続を確認して、もう一度お試しください。",
-            primaryAction: ErrorAction("再試行", action: onRetry)
+            primaryAction: UIErrorAction("再試行", action: onRetry)
         )
     }
 }
@@ -222,8 +222,8 @@ struct DataErrorView: View {
             error: error,
             title: "データ読み込みエラー",
             message: "データの読み込みに失敗しました。",
-            primaryAction: ErrorAction("再読み込み", action: onRefresh),
-            secondaryAction: ErrorAction("再試行", action: onRetry)
+            primaryAction: UIErrorAction("再読み込み", action: onRefresh),
+            secondaryAction: UIErrorAction("再試行", action: onRetry)
         )
     }
 }
@@ -238,8 +238,8 @@ struct PermissionErrorView: View {
             error: PermissionError.denied(feature),
             title: "アクセス許可が必要です",
             message: "\(feature)を使用するには許可が必要です。",
-            primaryAction: ErrorAction("許可する", action: onRequestPermission),
-            secondaryAction: onSkip.map { ErrorAction("スキップ", action: $0) }
+            primaryAction: UIErrorAction("許可する", action: onRequestPermission),
+            secondaryAction: onSkip.map { UIErrorAction("スキップ", action: $0) }
         )
     }
 }
@@ -430,7 +430,7 @@ struct ErrorStateView<Content: View>: View {
         if isError, let error = error {
             ErrorView(
                 error: error,
-                primaryAction: ErrorAction("再試行", action: onRetry)
+                primaryAction: UIErrorAction("再試行", action: onRetry)
             )
         } else {
             content()
@@ -445,8 +445,8 @@ struct ErrorStateView<Content: View>: View {
         VStack(spacing: 20) {
             ErrorView(
                 error: MockNetworkError.noConnection,
-                primaryAction: ErrorAction("再試行") {},
-                secondaryAction: ErrorAction("キャンセル") {}
+                primaryAction: UIErrorAction("再試行") {},
+                secondaryAction: UIErrorAction("キャンセル") {}
             )
             
             CompactErrorView(

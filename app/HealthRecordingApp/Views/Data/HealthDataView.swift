@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct HealthDataView: View {
-    @ObservedObject var viewModel: HealthDataViewModel
+    var viewModel: HealthDataViewModel
     @State private var showingManualInput = false
     @State private var selectedDataType: HealthDataType? = nil
     @State private var showingFilterOptions = false
@@ -17,9 +17,9 @@ struct HealthDataView: View {
                 dataContentSection
             }
             .navigationTitle("健康データ")
-            .navigationBarTitleDisplayMode(.large)
+
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button(action: {
                             showingManualInput = true
@@ -81,7 +81,7 @@ struct HealthDataView: View {
             manualInputQuickAccess
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(Color.gray.opacity(0.1))
     }
     
     private var quickStatsRow: some View {
@@ -268,7 +268,7 @@ struct QuickStatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
-        .background(Color(.systemBackground))
+        .background(Color(.controlColor))
         .cornerRadius(8)
     }
 }
@@ -317,7 +317,7 @@ struct DataRecordCard: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color(.controlColor))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
@@ -351,7 +351,7 @@ struct DataRecordCardSkeleton: View {
                 .frame(width: 40, height: 20)
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color(.controlColor))
         .cornerRadius(12)
         .opacity(isAnimating ? 0.5 : 1.0)
         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
@@ -377,27 +377,12 @@ extension DateFormatter {
     }()
 }
 
-// MARK: - HealthDataType Icon Extension
 
-extension HealthDataType {
-    var iconName: String {
-        switch self {
-        case .weight:
-            return "scalemass"
-        case .steps:
-            return "figure.walk"
-        case .calories:
-            return "flame"
-        case .heartRate:
-            return "heart"
-        case .bloodGlucose:
-            return "drop"
-        }
-    }
-}
 
+/*
 #Preview {
     // Mock view model for preview
+    // TODO: Create proper mock classes for preview
     let mockViewModel = HealthDataViewModel(
         fetchHealthDataUseCase: MockFetchHealthDataUseCase(),
         recordHealthDataUseCase: MockRecordHealthDataUseCase(),
@@ -406,3 +391,4 @@ extension HealthDataType {
     
     HealthDataView(viewModel: mockViewModel)
 }
+*/

@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct ManualDataInputView: View {
     @Binding var isPresented: Bool
@@ -17,6 +20,15 @@ struct ManualDataInputView: View {
     @State private var currentError: (any UserFriendlyError)?
     @State private var validationFeedback: String = ""
     @State private var isValidating = false
+    
+    // UI/UX Enhancement states
+    @State private var showingSmartSuggestions = false
+    @State private var smartSuggestions: [Double] = []
+    @State private var recentValues: [Double] = []
+    @State private var showingPresets = false
+    @State private var inputFocused = false
+    @State private var hapticFeedbackEnabled = true
+    @State private var animateSuccess = false
     
     // Data integrity alert state
     @State private var showingDuplicateAlert = false
@@ -57,6 +69,7 @@ struct ManualDataInputView: View {
                 modelContext: modelContext
             ),
             healthKitService: HealthKitService(),
+
             logger: logger
         )
     }
@@ -80,23 +93,37 @@ struct ManualDataInputView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         // Data type selector
-                        dataTypeSelector
+                        enhancedDataTypeSelector
+                        
+                        // Smart suggestions (if available)
+                        if showingSmartSuggestions {
+                            smartSuggestionsSection
+                        }
                         
                         // Input form
-                        inputFormSection
+                        enhancedInputFormSection
+                        
+                        // Preset values section
+                        if showingPresets {
+                            presetsSection
+                        }
                         
                         // Date selector
-                        dateSection
+                        enhancedDateSection
                         
                         // Action buttons
-                        actionButtons
+                        enhancedActionButtons
                     }
                     .padding(.horizontal)
                 }
                 
                 Spacer()
             }
+#if canImport(UIKit)
             .navigationBarHidden(true)
+            #else
+            .toolbar(.hidden, for: .automatic)
+            #endif
             .validationErrorAlert(error: $currentError) { action in
                 handleErrorAction(action)
             }
@@ -162,7 +189,9 @@ struct ManualDataInputView: View {
                 HStack {
                     TextField(placeholderText, text: $inputValue)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        #if canImport(UIKit)
                         .keyboardType(keyboardType)
+                        #endif
                         .font(.title2)
                         .onChange(of: inputValue) { _, newValue in
                             validateInput(newValue)
@@ -196,7 +225,7 @@ struct ManualDataInputView: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
     }
     
@@ -218,7 +247,7 @@ struct ManualDataInputView: View {
                             .foregroundColor(.primary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .background(Color(.systemGray5))
+                            .background(Color.gray.opacity(0.05))
                             .cornerRadius(8)
                     }
                 }
@@ -243,7 +272,7 @@ struct ManualDataInputView: View {
             )
             .datePickerStyle(CompactDatePickerStyle())
             .padding()
-            .background(Color(.systemGray6))
+            .background(Color.gray.opacity(0.1))
             .cornerRadius(12)
         }
     }
@@ -278,7 +307,7 @@ struct ManualDataInputView: View {
                     .fontWeight(.medium)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color(.systemGray5))
+                    .background(Color.gray.opacity(0.1))
                     .foregroundColor(.primary)
                     .cornerRadius(12)
             }
@@ -319,6 +348,7 @@ struct ManualDataInputView: View {
         }
     }
     
+    #if canImport(UIKit)
     private var keyboardType: UIKeyboardType {
         switch selectedDataType {
         case .weight:
@@ -327,6 +357,7 @@ struct ManualDataInputView: View {
             return .numberPad
         }
     }
+    #endif
     
     private var quickEntryValues: [Double] {
         switch selectedDataType {
@@ -425,8 +456,8 @@ struct ManualDataInputView: View {
         )
         
         // Phase 9.3.4: Comprehensive data integrity protection
-        await performDataIntegrityChecks(healthDataInput) { [weak self] shouldProceed in
-            guard let self = self, shouldProceed else { return }
+        await performDataIntegrityChecks(healthDataInput) { shouldProceed in
+            guard shouldProceed else { return }
             Task {
                 await self.proceedWithSave(healthDataInput: healthDataInput)
             }
@@ -444,7 +475,7 @@ struct ManualDataInputView: View {
             do {
                 let manualData = ManualHealthData(
                     type: selectedDataType,
-                    value: value,
+                    value: healthDataInput.value,
                     unit: selectedDataType.unit,
                     timestamp: selectedDate,
                     source: .manual
@@ -461,7 +492,7 @@ struct ManualDataInputView: View {
                     
                     logger.info("Manual data saved successfully", context: [
                         "data_type": selectedDataType.rawValue,
-                        "value": value,
+                        "value": healthDataInput.value,
                         "timestamp": selectedDate.ISO8601Format()
                     ])
                 }
@@ -505,11 +536,9 @@ struct ManualDataInputView: View {
         
         // Parse input value
         guard let value = Double(input) else {
-            validationResult = .failure([DataValidationError.invalidFormat(
-                input: input,
-                expectedFormat: "数値",
-                dataType: selectedDataType,
-                suggestion: "数値を入力してください"
+            validationResult = .failure([DataValidationError.dataIntegrityViolation(
+                reason: "入力値「\(input)」は数値として認識できません",
+                suggestion: "数値を入力してください（例: 70.5）"
             )])
             validationFeedback = "数値を入力してください"
             return
@@ -691,19 +720,19 @@ struct ManualDataInputView: View {
     
     private func convertToEnhancedError(_ validationError: DataValidationError) -> any UserFriendlyError {
         switch validationError {
-        case .valueTooHigh(let value, let maximum, let dataType, let suggestion):
+        case .valueTooHigh(let value, let maximum, let dataType, _):
             return EnhancedValidationError.valueOutOfRange(
                 value: value,
                 range: 0...maximum,
                 dataType: dataType
             )
-        case .valueTooLow(let value, let minimum, let dataType, let suggestion):
+        case .valueTooLow(let value, let minimum, let dataType, _):
             return EnhancedValidationError.valueOutOfRange(
                 value: value,
                 range: minimum...Double.greatestFiniteMagnitude,
                 dataType: dataType
             )
-        case .timestampInFuture(let timestamp, let suggestion):
+        case .timestampInFuture(let timestamp, _):
             return EnhancedValidationError.invalidTimestamp(
                 timestamp: timestamp,
                 reason: "未来の時刻は入力できません"
@@ -730,14 +759,14 @@ struct ManualDataInputView: View {
             userRepository: SwiftDataUserRepository(
                 modelContext: modelContext
             ),
-            healthKitService: HealthKitService(),
+
             logger: logger
         )
         
         let records = try await useCase.fetchHealthRecords(
             for: mockUser,
             type: dataType,
-            dateRange: dateRange,
+            dateRange: DateRange(startDate: dateRange.lowerBound, endDate: dateRange.upperBound),
             limit: 100
         )
         
@@ -1052,6 +1081,844 @@ struct ManualDataInputView: View {
             Text(data.issue.explanation + "\n\n" + data.issue.recommendation)
         }
     }
+    
+    // MARK: - Enhanced UI Components for Phase 9.4
+    
+    // MARK: - Enhanced Data Type Selector
+    
+    private var enhancedDataTypeSelector: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("データ種別")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button(action: {
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        showingPresets.toggle()
+                    }
+                }) {
+                    Image(systemName: showingPresets ? "list.bullet.circle.fill" : "list.bullet.circle")
+                        .foregroundColor(.blue)
+                        .scaleEffect(showingPresets ? 1.2 : 1.0)
+                        .animation(.spring(response: 0.3), value: showingPresets)
+                }
+                .accessibilityLabel("プリセット値表示")
+                .accessibilityHint(showingPresets ? "プリセット値を非表示" : "プリセット値を表示")
+            }
+            
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                ForEach([HealthDataType.weight, .steps, .calories, .heartRate], id: \.self) { dataType in
+                    EnhancedDataTypeCard(
+                        dataType: dataType,
+                        isSelected: selectedDataType == dataType,
+                        recentValue: getRecentValue(for: dataType)
+                    ) {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                            selectedDataType = dataType
+                            inputValue = "" // Reset input when changing type
+                            loadSmartSuggestions(for: dataType)
+                            if hapticFeedbackEnabled {
+                                triggerHapticFeedback(.selection)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical)
+    }
+    
+    // MARK: - Smart Suggestions Section
+    
+    private var smartSuggestionsHeader: some View {
+        HStack {
+            Image(systemName: "sparkles")
+                .foregroundColor(.yellow)
+            Text("スマート提案")
+                .font(.subheadline)
+                .fontWeight(.medium)
+            
+            Spacer()
+            
+            Button("非表示") {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    showingSmartSuggestions = false
+                }
+            }
+            .font(.caption)
+            .foregroundColor(.blue)
+        }
+    }
+    
+    private var smartSuggestionsGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+            ForEach(smartSuggestions, id: \.self) { suggestion in
+                SmartSuggestionButton(
+                    value: suggestion,
+                    dataType: selectedDataType
+                ) {
+                    withAnimation(.spring(response: 0.4)) {
+                        inputValue = String(format: selectedDataType == .weight ? "%.1f" : "%.0f", suggestion)
+                        if hapticFeedbackEnabled {
+#if canImport(UIKit)
+                            triggerHapticFeedback(.impact(.light))
+#endif
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private var smartSuggestionsBackground: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(Color.yellow.opacity(0.1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+            )
+    }
+    
+    private var smartSuggestionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            smartSuggestionsHeader
+            smartSuggestionsGrid
+        }
+        .padding()
+        .background(smartSuggestionsBackground)
+        .transition(.asymmetric(
+            insertion: .scale.combined(with: .opacity),
+            removal: .opacity
+        ))
+    }
+    
+    // MARK: - Enhanced Input Form Section
+    
+    private var enhancedInputFormSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("\(selectedDataType.displayName)を入力")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                if !recentValues.isEmpty {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                            showingSmartSuggestions.toggle()
+                        }
+                    }) {
+                        Image(systemName: "brain")
+                            .foregroundColor(.purple)
+                            .scaleEffect(showingSmartSuggestions ? 1.2 : 1.0)
+                            .animation(.spring(response: 0.3), value: showingSmartSuggestions)
+                    }
+                    .accessibilityLabel("スマート提案")
+                    .accessibilityHint("過去のデータに基づく入力提案")
+                }
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    TextField(placeholderText, text: $inputValue)
+                        .textFieldStyle(CustomTextFieldStyle(
+                            isFocused: inputFocused,
+                            validationState: getValidationState()
+                        ))
+                        #if canImport(UIKit)
+                        .keyboardType(keyboardType)
+                        #endif
+                        .font(.title2)
+                        .fontWeight(.medium)
+                        .onChange(of: inputValue) { _, newValue in
+                            validateInputWithAnimation(newValue)
+                        }
+                        .onFocusChange { focused in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                inputFocused = focused
+                            }
+                        }
+                    
+                    Text(selectedDataType.unit)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(inputFocused ? .blue : .secondary)
+                        .animation(.easeInOut(duration: 0.2), value: inputFocused)
+                        .padding(.trailing, 8)
+                }
+                
+                // Enhanced validation feedback
+                ValidationFeedbackView(
+                    feedback: validationFeedback,
+                    state: getValidationState(),
+                    hint: inputHint
+                )
+            }
+            
+            // Enhanced quick entry buttons
+            if !quickEntryValues.isEmpty {
+                enhancedQuickEntrySection
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.controlColor).opacity(0.5))
+                .shadow(color: .black.opacity(inputFocused ? 0.15 : 0.05), radius: inputFocused ? 8 : 4)
+        )
+        .scaleEffect(inputFocused ? 1.02 : 1.0)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: inputFocused)
+    }
+    
+    // MARK: - Enhanced Quick Entry Section
+    
+    private var enhancedQuickEntrySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("クイック入力")
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+            
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                ForEach(quickEntryValues, id: \.self) { value in
+                    QuickEntryButton(
+                        value: value,
+                        dataType: selectedDataType,
+                        isRecommended: isRecommendedValue(value)
+                    ) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            inputValue = String(format: selectedDataType == .weight ? "%.1f" : "%.0f", value)
+                            if hapticFeedbackEnabled {
+#if canImport(UIKit)
+                                triggerHapticFeedback(.impact(.medium))
+#endif
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.top, 8)
+    }
+    
+    // MARK: - Presets Section
+    
+    private var presetsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "bookmark.fill")
+                    .foregroundColor(.orange)
+                Text("プリセット値")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button("閉じる") {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showingPresets = false
+                    }
+                }
+                .font(.subheadline)
+                .foregroundColor(.blue)
+            }
+            
+            PresetValuesGrid(
+                dataType: selectedDataType
+            ) { value in
+                withAnimation(.spring(response: 0.4)) {
+                    inputValue = String(format: selectedDataType == .weight ? "%.1f" : "%.0f", value)
+                    showingPresets = false
+                    if hapticFeedbackEnabled {
+#if canImport(UIKit)
+                        triggerHapticFeedback(.impact(.light))
+#endif
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.orange.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .transition(.asymmetric(
+            insertion: .move(edge: .top).combined(with: .opacity),
+            removal: .move(edge: .top).combined(with: .opacity)
+        ))
+    }
+    
+    // MARK: - Enhanced Date Section
+    
+    private var enhancedDateSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("記録日時")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            HStack(spacing: 16) {
+                DatePicker(
+                    "記録日時を選択",
+                    selection: $selectedDate,
+                    in: ...Date(),
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .datePickerStyle(.compact)
+                .labelsHidden()
+                
+                Spacer()
+                
+                // Quick date buttons
+                HStack(spacing: 8) {
+                    QuickDateButton(title: "今", offset: 0) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            selectedDate = Date()
+                        }
+                    }
+                    
+                    QuickDateButton(title: "1時間前", offset: -3600) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            selectedDate = Date().addingTimeInterval(-3600)
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.quaternarySystemFill))
+        )
+    }
+    
+    // MARK: - Enhanced Action Buttons
+    
+    private var enhancedActionButtons: some View {
+        VStack(spacing: 16) {
+            // Primary save button
+            Button(action: saveData) {
+                HStack {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                    } else if animateSuccess {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.white)
+                            .scaleEffect(1.2)
+                    } else {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.white)
+                    }
+                    
+                    Text(isLoading ? "保存中..." : "データを保存")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            LinearGradient(
+                                colors: inputValue.isEmpty ? [.gray, .gray.opacity(0.8)] : [.blue, .blue.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: .blue.opacity(0.3), radius: inputValue.isEmpty ? 0 : 8)
+                )
+                .foregroundColor(.white)
+                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: inputValue.isEmpty)
+                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: animateSuccess)
+            }
+            .disabled(inputValue.isEmpty || isLoading)
+            
+            // Secondary action buttons
+            HStack(spacing: 16) {
+                Button("クリア") {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        clearForm()
+                    }
+                }
+                .foregroundColor(.orange)
+                .fontWeight(.medium)
+                
+                Spacer()
+                
+                Button("キャンセル") {
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        isPresented = false
+                    }
+                }
+                .foregroundColor(.red)
+                .fontWeight(.medium)
+            }
+        }
+    }
+    
+    // MARK: - Helper Methods for Enhanced UI
+    
+    private func loadSmartSuggestions(for dataType: HealthDataType) {
+        // Load recent values and generate smart suggestions
+        recentValues = getRecentValues(for: dataType)
+        smartSuggestions = generateSmartSuggestions(from: recentValues, for: dataType)
+        
+        if !smartSuggestions.isEmpty && !showingSmartSuggestions {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2)) {
+                showingSmartSuggestions = true
+            }
+        }
+    }
+    
+    private func getRecentValues(for dataType: HealthDataType) -> [Double] {
+        // This would fetch recent values from the database
+        // For now, return sample values
+        switch dataType {
+        case .weight:
+            return [70.2, 69.8, 70.5, 70.1, 69.9]
+        case .steps:
+            return [8500, 12000, 6800, 10500, 9200]
+        case .calories:
+            return [2200, 1800, 2500, 2100, 2300]
+        case .heartRate:
+            return [75, 68, 82, 71, 77]
+        case .bloodGlucose:
+            return [95, 102, 88, 96, 101]
+        }
+    }
+    
+    private func getRecentValue(for dataType: HealthDataType) -> Double? {
+        let values = getRecentValues(for: dataType)
+        return values.first
+    }
+    
+    private func generateSmartSuggestions(from values: [Double], for dataType: HealthDataType) -> [Double] {
+        guard !values.isEmpty else { return [] }
+        
+        let average = values.reduce(0, +) / Double(values.count)
+        let recent = values.first ?? average
+        
+        var suggestions: [Double] = []
+        
+        // Add recent value
+        suggestions.append(recent)
+        
+        // Add average
+        suggestions.append(average)
+        
+        // Add slight variations
+        switch dataType {
+        case .weight:
+            suggestions.append(contentsOf: [recent - 0.5, recent + 0.5])
+        case .steps:
+            suggestions.append(contentsOf: [recent - 1000, recent + 1000])
+        case .calories:
+            suggestions.append(contentsOf: [recent - 200, recent + 200])
+        case .heartRate:
+            suggestions.append(contentsOf: [recent - 5, recent + 5])
+        case .bloodGlucose:
+            suggestions.append(contentsOf: [recent - 10, recent + 10])
+        }
+        
+        // Remove duplicates and invalid values
+        return Array(Set(suggestions))
+            .filter { $0 > 0 }
+            .sorted()
+            .prefix(4)
+            .map { $0 }
+    }
+    
+    private func isRecommendedValue(_ value: Double) -> Bool {
+        return recentValues.contains { abs($0 - value) < 1.0 }
+    }
+    
+    private func getValidationState() -> ValidationState {
+        if validationFeedback.isEmpty {
+            return .normal
+        } else if case .success = validationResult {
+            return .valid
+        } else {
+            return .invalid
+        }
+    }
+    
+    private func validateInputWithAnimation(_ input: String) {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            validateInput(input)
+        }
+    }
+    
+    private func triggerHapticFeedback(_ type: HapticFeedbackType) {
+        #if canImport(UIKit)
+        switch type {
+        case .selection:
+            let generator = UISelectionFeedbackGenerator()
+            generator.selectionChanged()
+        case .impact(let style):
+            let generator = UIImpactFeedbackGenerator(style: style)
+            generator.impactOccurred()
+        case .notification(let type):
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(type)
+        }
+        #endif
+    }
+    
+}
+
+// MARK: - Enhanced UI Supporting Components
+
+struct EnhancedDataTypeCard: View {
+    let dataType: HealthDataType
+    let isSelected: Bool
+    let recentValue: Double?
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: dataType.iconName)
+                        .font(.title2)
+                        .foregroundColor(isSelected ? .white : .blue)
+                    
+                    Spacer()
+                    
+                    if let recent = recentValue {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("前回")
+                                .font(.caption2)
+                                .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                            Text(String(format: dataType == .weight ? "%.1f" : "%.0f", recent))
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(isSelected ? .white : .blue)
+                        }
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(dataType.displayName)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(isSelected ? .white : .primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Text(dataType.unit)
+                        .font(.caption)
+                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isSelected ? Color.blue : Color(.controlColor))
+                    .shadow(color: isSelected ? .blue.opacity(0.3) : .clear, radius: isSelected ? 8 : 0)
+            )
+            .scaleEffect(isSelected ? 1.05 : 1.0)
+            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isSelected)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct SmartSuggestionButton: View {
+    let value: Double
+    let dataType: HealthDataType
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Text(String(format: dataType == .weight ? "%.1f" : "%.0f", value))
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text(dataType.unit)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.yellow.opacity(0.2))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.yellow.opacity(0.4), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(SpringButtonStyle())
+    }
+}
+
+struct QuickEntryButton: View {
+    let value: Double
+    let dataType: HealthDataType
+    let isRecommended: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    if isRecommended {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
+                    
+                    Text(String(format: dataType == .weight ? "%.1f" : "%.0f", value))
+                        .font(.subheadline)
+                        .fontWeight(isRecommended ? .semibold : .medium)
+                        .foregroundColor(.primary)
+                }
+                
+                Text(dataType.unit)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isRecommended ? Color.orange.opacity(0.15) : Color(.controlColor).opacity(0.5))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(
+                                isRecommended ? Color.orange.opacity(0.4) : Color.clear,
+                                lineWidth: isRecommended ? 1.5 : 0
+                            )
+                    )
+            )
+        }
+        .buttonStyle(SpringButtonStyle())
+    }
+}
+
+struct PresetValuesGrid: View {
+    let dataType: HealthDataType
+    let action: (Double) -> Void
+    
+    private var presetValues: [Double] {
+        switch dataType {
+        case .weight:
+            return [50, 55, 60, 65, 70, 75, 80, 85, 90, 95]
+        case .steps:
+            return [3000, 5000, 8000, 10000, 12000, 15000]
+        case .calories:
+            return [1500, 1800, 2000, 2200, 2500, 3000]
+        case .heartRate:
+            return [60, 65, 70, 75, 80, 85, 90, 95]
+        case .bloodGlucose:
+            return [80, 90, 95, 100, 110, 120, 140]
+        }
+    }
+    
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+            ForEach(presetValues, id: \.self) { value in
+                Button(action: { action(value) }) {
+                    VStack(spacing: 2) {
+                        Text(String(format: dataType == .weight ? "%.0f" : "%.0f", value))
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                        
+                        Text(dataType.unit)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.orange.opacity(0.1))
+                    )
+                }
+                .buttonStyle(SpringButtonStyle())
+            }
+        }
+    }
+}
+
+struct QuickDateButton: View {
+    let title: String
+    let offset: TimeInterval
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.blue)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.blue.opacity(0.1))
+                )
+        }
+        .buttonStyle(SpringButtonStyle())
+    }
+}
+
+struct ValidationFeedbackView: View {
+    let feedback: String
+    let state: ValidationState
+    let hint: String
+    
+    var body: some View {
+        Group {
+            if !feedback.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: state.iconName)
+                        .font(.caption)
+                        .foregroundColor(state.color)
+                    
+                    Text(feedback)
+                        .font(.caption)
+                        .foregroundColor(state.color)
+                }
+                .transition(.asymmetric(
+                    insertion: .scale.combined(with: .opacity),
+                    removal: .opacity
+                ))
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text(hint)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: feedback.isEmpty)
+    }
+}
+
+struct CustomTextFieldStyle: TextFieldStyle {
+    let isFocused: Bool
+    let validationState: ValidationState
+    
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.controlColor).opacity(0.8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(
+                                isFocused ? Color.blue : validationState.borderColor,
+                                lineWidth: isFocused ? 2 : validationState.borderWidth
+                            )
+                    )
+            )
+    }
+}
+
+struct SpringButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Supporting Enums and Extensions
+
+enum ValidationState {
+    case normal
+    case valid
+    case invalid
+    
+    var color: Color {
+        switch self {
+        case .normal:
+            return .secondary
+        case .valid:
+            return .green
+        case .invalid:
+            return .red
+        }
+    }
+    
+    var borderColor: Color {
+        switch self {
+        case .normal:
+            return .clear
+        case .valid:
+            return .green
+        case .invalid:
+            return .red
+        }
+    }
+    
+    var borderWidth: CGFloat {
+        switch self {
+        case .normal:
+            return 0
+        case .valid, .invalid:
+            return 1.5
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .normal:
+            return "info.circle"
+        case .valid:
+            return "checkmark.circle"
+        case .invalid:
+            return "exclamationmark.circle"
+        }
+    }
+}
+
+enum HapticFeedbackType {
+    case selection
+#if canImport(UIKit)
+    case impact(UIImpactFeedbackGenerator.FeedbackStyle)
+    case notification(UINotificationFeedbackGenerator.FeedbackType)
+#endif
+}
+
+// Extension for focus state
+struct FocusModifier: ViewModifier {
+    @Binding var isFocused: Bool
+    
+    func body(content: Content) -> some View {
+        content
+            .onTapGesture {
+                isFocused = true
+            }
+    }
+}
+
+extension View {
+    func onFocusChange(_ action: @escaping (Bool) -> Void) -> some View {
+        self.onTapGesture {
+            action(true)
+        }
+    }
 }
 
 // MARK: - Data Integrity Protection Types
@@ -1065,12 +1932,12 @@ struct StatisticalAnomaly {
     let value: Double
     let dataType: HealthDataType
     let zScore: Double
-    let severity: AnomalySeverity
+    let severity: ValidationAnomalySeverity
     let explanation: String
     let recommendation: String
 }
 
-enum AnomalySeverity {
+enum ValidationAnomalySeverity {
     case moderate
     case critical
 }
@@ -1126,7 +1993,7 @@ extension EnhancedValidationError {
         value: Double,
         dataType: HealthDataType,
         zScore: Double,
-        severity: AnomalySeverity,
+        severity: ValidationAnomalySeverity,
         explanation: String
     ) -> EnhancedValidationError {
         return .suspiciousValue(
@@ -1134,8 +2001,7 @@ extension EnhancedValidationError {
             dataType: dataType,
             reason: .outlier(standardDeviations: zScore),
             context: ValidationErrorContext(
-                userAction: "異常値確認",
-                additionalInfo: [
+                additionalData: [
                     "explanation": explanation,
                     "z_score": String(zScore),
                     "severity": "\(severity)"
@@ -1150,10 +2016,9 @@ extension EnhancedValidationError {
     ) -> EnhancedValidationError {
         return .timestampInvalid(
             timestamp: timestamp,
-            reason: .future,
+            reason: .futureDate,
             context: ValidationErrorContext(
-                userAction: "時刻修正",
-                additionalInfo: ["reason": reason]
+                additionalData: ["reason": reason]
             )
         )
     }
@@ -1184,7 +2049,7 @@ struct DataTypeCard: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(isSelected ? Color.blue : Color(.systemGray6))
+            .background(isSelected ? Color.blue : Color.gray.opacity(0.1))
             .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())
@@ -1211,10 +2076,6 @@ extension HealthDataType {
 }
 
 // MARK: - Supporting Types
-
-extension DataSource {
-    static let manual = DataSource.manual
-}
 
 // MARK: - Confirmable Validation Error
 

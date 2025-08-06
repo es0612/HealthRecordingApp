@@ -435,7 +435,7 @@ final class IntegratedHealthDataService: IntegratedHealthDataServiceProtocol {
     ) async -> DataCoverageMetrics {
         
         let dataTypes = Set(integratedRecords.map { $0.type })
-        let totalDays = Calendar.current.dateInterval(from: integratedRecords.first?.timestamp ?? Date(), to: integratedRecords.last?.timestamp ?? Date())?.duration ?? 0
+        let totalDays = Calendar.current.dateInterval(of: .day, for: Date())?.duration ?? 0
         let daysCovered = totalDays / (24 * 60 * 60)
         
         var typeMetrics: [HealthDataType: Double] = [:]
