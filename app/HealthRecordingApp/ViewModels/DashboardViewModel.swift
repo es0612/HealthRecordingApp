@@ -214,13 +214,16 @@ final class DashboardViewModel {
         let dataPoints = todayRecords.count
         let completionRate = goalProgress
         
+        let todayWeight = todayRecords.filter { $0.type == .weight }.last?.value
+        
         await MainActor.run {
             todayStats = DailyStats(
                 date: today,
                 dataPointsRecorded: dataPoints,
                 goalsProgress: goalProgress,
                 completionRate: completionRate,
-                recordsByType: groupRecordsByType(todayRecords)
+                recordsByType: groupRecordsByType(todayRecords),
+                weight: todayWeight
             )
         }
         
@@ -544,6 +547,7 @@ struct DailyStats {
     let goalsProgress: Double
     let completionRate: Double
     let recordsByType: [HealthDataType: Int]
+    let weight: Double?
     
     var isComplete: Bool {
         completionRate >= 1.0
