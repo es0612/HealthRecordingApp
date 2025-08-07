@@ -48,6 +48,213 @@ final class TrendsViewModel {
         healthInsights.filter { $0.priority == .high || $0.priority == .critical }
     }
     
+    // MARK: - Chart Data Properties
+    
+    var latestValue: Double? {
+        chartDataPoints.last?.value
+    }
+    
+    var averageValue: Double? {
+        guard !chartDataPoints.isEmpty else { return nil }
+        let total = chartDataPoints.reduce(0.0) { $0 + $1.value }
+        return total / Double(chartDataPoints.count)
+    }
+    
+    var maximumValue: Double? {
+        chartDataPoints.map(\.value).max()
+    }
+    
+    var minimumValue: Double? {
+        chartDataPoints.map(\.value).min()
+    }
+    
+    var changeRate: Double? {
+        guard chartDataPoints.count >= 2,
+              let firstValue = chartDataPoints.first?.value,
+              let lastValue = chartDataPoints.last?.value,
+              firstValue > 0 else { return nil }
+        
+        return ((lastValue - firstValue) / firstValue) * 100
+    }
+    
+    // MARK: - Health Data Type Specific Properties
+    
+    var targetWeight: Double? {
+        // TODO: Get from user's active weight goal
+        selectedDataType == .weight ? 70.0 : nil
+    }
+    
+    var dailyStepsGoal: Double? {
+        // TODO: Get from user's active steps goal
+        selectedDataType == .steps ? 10000 : nil
+    }
+    
+    var dailyCaloriesGoal: Double? {
+        // TODO: Get from user's active calories goal or calculated BMR
+        selectedDataType == .calories ? 2200 : nil
+    }
+    
+    var restingHeartRate: Double? {
+        // TODO: Calculate from user's heart rate history
+        selectedDataType == .heartRate ? 65.0 : nil
+    }
+    
+    var maxHeartRate: Double? {
+        // TODO: Calculate based on age (220 - age formula)
+        selectedDataType == .heartRate ? 190.0 : nil
+    }
+    
+    // MARK: - Data Type Specific Insights
+    
+    var isAboveTarget: Bool {
+        guard let latest = latestValue else { return false }
+        
+        switch selectedDataType {
+        case .weight:
+            return targetWeight.map { latest > $0 } ?? false
+        case .steps:
+            return dailyStepsGoal.map { latest > $0 } ?? false
+        case .calories:
+            return dailyCaloriesGoal.map { latest > $0 } ?? false
+        case .heartRate:
+            return maxHeartRate.map { latest > $0 * 0.85 } ?? false
+        case .bloodGlucose:
+            return latest > 100 // Normal upper limit
+        }
+    }
+    
+    var isBelowTarget: Bool {
+        guard let latest = latestValue else { return false }
+        
+        switch selectedDataType {
+        case .weight:
+            return targetWeight.map { latest < $0 * 0.95 } ?? false
+        case .steps:
+            return dailyStepsGoal.map { latest < $0 * 0.8 } ?? false
+        case .calories:
+            return dailyCaloriesGoal.map { latest < $0 * 0.8 } ?? false
+        case .heartRate:
+            return restingHeartRate.map { latest < $0 } ?? false
+        case .bloodGlucose:
+            return latest < 70 // Low blood sugar threshold
+        }
+    }
+    
+    var progressPercentage: Double {
+        guard let latest = latestValue else { return 0.0 }
+        
+        switch selectedDataType {
+        case .weight:
+            guard let target = targetWeight else { return 0.0 }
+            return (latest / target) * 100
+        case .steps:
+            guard let goal = dailyStepsGoal else { return 0.0 }
+            return min((latest / goal) * 100, 100)
+        case .calories:
+            guard let goal = dailyCaloriesGoal else { return 0.0 }
+            return (latest / goal) * 100
+        case .heartRate:
+            guard let max = maxHeartRate else { return 0.0 }
+            return (latest / max) * 100
+        case .bloodGlucose:
+            // Return percentage within normal range (80-100 mg/dL)
+            let normalRange = 100.0 - 80.0
+            let position = min(max(latest - 80.0, 0), normalRange)
+            return (position / normalRange) * 100
+        }
+    }
+    
+    // MARK: - Trend Performance Analysis
+    
+    var weeklyPerformanceTrend: PerformanceTrend {
+        guard chartDataPoints.count >= 7 else { return .insufficient }
+        
+        let recentWeek = Array(chartDataPoints.suffix(7))
+        let averageRecent = recentWeek.reduce(0.0) { $0 + $1.value } / 7.0
+        
+        if chartDataPoints.count >= 14 {
+            let previousWeek = Array(chartDataPoints.dropLast(7).suffix(7))
+            let averagePrevious = previousWeek.reduce(0.0) { $0 + $1.value } / 7.0
+            
+            let changePercent = ((averageRecent - averagePrevious) / averagePrevious) * 100
+            
+            switch selectedDataType {
+            case .weight:
+                if abs(changePercent) < 1.0 { return .stable }
+                return targetWeight.map { averageRecent > $0 } == true ?
+                    (changePercent > 0 ? .declining : .improving) :
+                    (changePercent > 0 ? .improving : .declining)
+            case .steps:
+                if abs(changePercent) < 5.0 { return .stable }
+                return changePercent > 0 ? .improving : .declining
+            case .calories:
+                if abs(changePercent) < 3.0 { return .stable }
+                return changePercent > 0 ? .improving : .declining
+            case .heartRate:
+                if abs(changePercent) < 2.0 { return .stable }
+                return changePercent < 0 ? .improving : .declining
+            case .bloodGlucose:
+                if abs(changePercent) < 5.0 { return .stable }
+                return changePercent < 0 ? .improving : .declining
+            }
+        }
+        
+        return .stable
+    }
+    
+    var streakCount: Int {
+        // Calculate consecutive days meeting goals
+        guard !chartDataPoints.isEmpty else { return 0 }
+        
+        var streak = 0
+        for dataPoint in chartDataPoints.reversed() {
+            let meetsGoal = checkGoalMetForDataPoint(dataPoint)
+            if meetsGoal {
+                streak += 1
+            } else {
+                break
+            }
+        }
+        
+        return streak
+    }
+    
+    var bestStreak: Int {
+        guard !chartDataPoints.isEmpty else { return 0 }
+        
+        var bestStreak = 0
+        var currentStreak = 0
+        
+        for dataPoint in chartDataPoints {
+            let meetsGoal = checkGoalMetForDataPoint(dataPoint)
+            if meetsGoal {
+                currentStreak += 1
+                bestStreak = max(bestStreak, currentStreak)
+            } else {
+                currentStreak = 0
+            }
+        }
+        
+        return bestStreak
+    }
+    
+    private func checkGoalMetForDataPoint(_ dataPoint: ChartDataPoint) -> Bool {
+        switch selectedDataType {
+        case .weight:
+            return targetWeight.map { abs(dataPoint.value - $0) <= $0 * 0.02 } ?? false
+        case .steps:
+            return dailyStepsGoal.map { dataPoint.value >= $0 } ?? false
+        case .calories:
+            return dailyCaloriesGoal.map { abs(dataPoint.value - $0) <= $0 * 0.1 } ?? false
+        case .heartRate:
+            // Goal is to stay within healthy resting range during rest
+            return dataPoint.value >= 60 && dataPoint.value <= 100
+        case .bloodGlucose:
+            // Goal is to stay within normal range
+            return dataPoint.value >= 80 && dataPoint.value <= 100
+        }
+    }
+    
     // MARK: - Dependencies
     private let fetchHealthDataUseCase: FetchHealthDataUseCaseProtocol
     private let trendAnalyzer: TrendAnalyzerProtocol
@@ -284,6 +491,51 @@ final class TrendsViewModel {
         }
     }
     
+    // MARK: - Data Update Methods
+    
+    @MainActor
+    func updateTimeRange(_ newRange: TrendTimeRange) {
+        logger.logUserAction("update_time_range", parameters: [
+            "oldRange": selectedTimeRange.rawValue,
+            "newRange": newRange.rawValue
+        ])
+        
+        // Convert TrendTimeRange to TimeRange
+        let timeRange: TimeRange
+        switch newRange {
+        case .week:
+            timeRange = .week
+        case .month:
+            timeRange = .month
+        case .quarter:
+            timeRange = .threeMonths
+        case .year:
+            timeRange = .year
+        }
+        
+        selectedTimeRange = timeRange
+        
+        // Reload data with new time range
+        Task {
+            await loadTrendData()
+        }
+    }
+    
+    @MainActor
+    func updateDataType(_ newType: HealthDataType) {
+        logger.logUserAction("update_data_type", parameters: [
+            "oldType": selectedDataType.rawValue,
+            "newType": newType.rawValue
+        ])
+        
+        selectedDataType = newType
+        
+        // Reload data with new data type
+        Task {
+            await loadTrendData()
+        }
+    }
+    
     // MARK: - Error Handling
     @MainActor
     func clearError() {
@@ -316,10 +568,51 @@ final class TrendsViewModel {
 // MARK: - Supporting Types
 // Note: TimeRange is defined in CommonTypes.swift to avoid duplication
 
-struct ChartDataPoint {
+enum PerformanceTrend: String, CaseIterable {
+    case improving = "improving"
+    case declining = "declining"
+    case stable = "stable"
+    case insufficient = "insufficient"
+    
+    var displayName: String {
+        switch self {
+        case .improving: return "改善中"
+        case .declining: return "悪化中"
+        case .stable: return "安定"
+        case .insufficient: return "データ不足"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .improving: return .green
+        case .declining: return .red
+        case .stable: return .blue
+        case .insufficient: return .gray
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .improving: return "arrow.up.right"
+        case .declining: return "arrow.down.right"
+        case .stable: return "arrow.right"
+        case .insufficient: return "questionmark"
+        }
+    }
+}
+
+struct ChartDataPoint: Identifiable {
+    let id = UUID()
     let date: Date
     let value: Double
     let movingAverage: Double?
+    var isSelected: Bool = false
+    
+    // Convenience computed property for Charts framework compatibility
+    var timestamp: Date {
+        return date
+    }
     
     var formattedValue: String {
         String(format: "%.1f", value)

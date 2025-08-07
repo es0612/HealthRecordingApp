@@ -50,10 +50,7 @@ struct MainTabView: View {
             
             // Trends Tab
             NavigationStack {
-                TrendsView(
-                    viewModel: trendsViewModel,
-                    healthDataViewModel: healthDataViewModel
-                )
+                TrendsView(viewModel: trendsViewModel)
             }
             .tabItem {
                 Label("トレンド", systemImage: "chart.line.uptrend.xyaxis")
@@ -175,26 +172,7 @@ enum AppTab: String, CaseIterable {
 
 // MARK: - Placeholder Views
 
-struct TrendsView: View {
-    let viewModel: TrendsViewModel
-    let healthDataViewModel: HealthDataViewModel
-    
-    var body: some View {
-        VStack {
-            Text("トレンド分析")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            
-            Text("近日実装予定")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .navigationTitle("トレンド")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.large)
-        #endif
-    }
-}
+// TrendsView is now implemented in Views/Trends/TrendsView.swift
 
 struct GoalsView: View {
     let viewModel: GoalsViewModel
