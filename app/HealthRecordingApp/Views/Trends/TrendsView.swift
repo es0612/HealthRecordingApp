@@ -2,6 +2,24 @@ import SwiftUI
 import Charts
 import Foundation
 
+enum TrendViewMode: CaseIterable {
+    case single, comparison
+    
+    var displayName: String {
+        switch self {
+        case .single: return "単一チャート"
+        case .comparison: return "比較表示"
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .single: return "chart.line.uptrend.xyaxis"
+        case .comparison: return "chart.bar.xaxis"
+        }
+    }
+}
+
 struct TrendsView: View {
     @Bindable var viewModel: TrendsViewModel
     @State private var selectedTimeRange: TrendTimeRange = .month
@@ -9,45 +27,51 @@ struct TrendsView: View {
     @State private var showingDataTypeSelector = false
     @State private var selectedDataPoint: ChartDataPoint?
     @State private var chartInteractionEnabled = true
+    @State private var showingPeriodSelector = false
+    @State private var customDateRange: DateRange?
+    @State private var viewMode: TrendViewMode = .single
+    @State private var showingMultiDataComparison = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Header with controls
-                trendsHeaderView
-                
-                // Main chart area
-                if viewModel.hasData {
-                    chartContainerView
-                } else {
-                    emptyStateView
+                // Header with controls - only show for single mode
+                if viewMode == .single {
+                    trendsHeaderView
                 }
                 
-                // Statistics summary
-                if !viewModel.chartDataPoints.isEmpty {
-                    statisticsView
+                // Main content area - conditional based on view mode
+                switch viewMode {
+                case .single:
+                    singleChartView
+                case .comparison:
+                    multiComparisonView
                 }
                 
                 Spacer()
             }
-            .navigationTitle("データトレンド")
+            .navigationTitle(viewMode == .single ? "データトレンド" : "データ比較")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("更新") {
-                        Task {
-                            await viewModel.refreshTrendData()
-                        }
-                    }
+                    toolbarContent
                 }
             }
             .refreshable {
                 await viewModel.refreshTrendData()
             }
             .sheet(isPresented: $showingDataTypeSelector) {
-                dataTypeSelectorSheet
+                if viewMode == .single {
+                    dataTypeSelectorSheet
+                }
+            }
+            .sheet(isPresented: $showingPeriodSelector) {
+                CustomPeriodSelector(
+                    selectedTimeRange: $selectedTimeRange,
+                    customDateRange: $customDateRange
+                )
             }
         }
         .task {
@@ -59,6 +83,78 @@ struct TrendsView: View {
         .onChange(of: selectedDataType) { _, newType in
             viewModel.updateDataType(newType)
         }
+        .onChange(of: customDateRange) { _, newRange in
+            if let customRange = newRange {
+                Task {
+                    await viewModel.updateCustomDateRange(customRange)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Toolbar Content
+    
+    @ViewBuilder
+    private var toolbarContent: some View {
+        HStack {
+            // View mode toggle
+            Menu {
+                ForEach(TrendViewMode.allCases, id: \.self) { mode in
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            viewMode = mode
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: mode.iconName)
+                            Text(mode.displayName)
+                            if viewMode == mode {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: viewMode.iconName)
+            }
+            
+            // Period selector button (only for single mode)
+            if viewMode == .single {
+                Button("期間") {
+                    showingPeriodSelector = true
+                }
+            }
+            
+            // Refresh button
+            Button("更新") {
+                Task {
+                    await viewModel.refreshTrendData()
+                }
+            }
+        }
+    }
+    
+    // MARK: - Main Content Views
+    
+    private var singleChartView: some View {
+        VStack(spacing: 0) {
+            // Main chart area
+            if viewModel.hasData {
+                chartContainerView
+            } else {
+                emptyStateView
+            }
+            
+            // Statistics summary
+            if !viewModel.chartDataPoints.isEmpty {
+                statisticsView
+            }
+        }
+    }
+    
+    private var multiComparisonView: some View {
+        MultiDataComparisonView(viewModel: viewModel)
     }
     
     // MARK: - Header View
@@ -691,7 +787,6 @@ struct TrendsView: View {
         default: return .gray
         }
     }
-    }
     
     private func statisticCard(title: String, value: Double?, unit: String) -> some View {
         VStack(spacing: 8) {
@@ -700,7 +795,7 @@ struct TrendsView: View {
                 .foregroundColor(.secondary)
             
             if let value = value {
-                Text("\(formatValue(value, for: selectedDataType))\(unit)")
+                Text("\(formatValue(value, for: viewModel.selectedDataType))\(unit)")
                     .font(.headline)
                     .fontWeight(.semibold)
             } else {
@@ -728,7 +823,7 @@ struct TrendsView: View {
             
             Spacer()
             
-            Text("対\(selectedTimeRange.displayName)開始時")
+            Text("対\(viewModel.selectedTimeRange.displayName)開始時")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -859,17 +954,17 @@ struct TrendsView: View {
         let maxValue = values.max() ?? 100
         let padding = (maxValue - minValue) * 0.1
         
-        switch selectedDataType {
+        switch viewModel.selectedDataType {
         case .weight:
-            return max(minValue - padding, 40)...(maxValue + padding)
+            return Swift.max(minValue - padding, 40.0)...(maxValue + padding)
         case .steps:
-            return 0...max(maxValue + padding, 15000)
+            return 0.0...Swift.max(maxValue + padding, 15000.0)
         case .calories:
-            return 0...max(maxValue + padding, 3000)
+            return 0.0...Swift.max(maxValue + padding, 3000.0)
         case .heartRate:
-            return max(minValue - padding, 40)...min(maxValue + padding, 220)
+            return Swift.max(minValue - padding, 40.0)...Swift.min(maxValue + padding, 220.0)
         case .bloodGlucose:
-            return max(minValue - padding, 70)...min(maxValue + padding, 200)
+            return Swift.max(minValue - padding, 70.0)...Swift.min(maxValue + padding, 200.0)
         }
     }
     
@@ -1214,12 +1309,12 @@ struct TrendsView: View {
         
         // Find the closest data point
         if let closestPoint = findClosestDataPoint(at: relativeX, in: frame) {
-            self.selectedDataPoint = closestPoint
+            selectedDataPoint = closestPoint
         }
     }
     
     private func findClosestDataPoint(at x: CGFloat, in frame: CGRect) -> ChartDataPoint? {
-        let dataPoints = self.viewModel.chartDataPoints
+        let dataPoints = viewModel.chartDataPoints
         guard !dataPoints.isEmpty else { return nil }
         
         // Simplified implementation - in reality you'd need to map chart coordinates
@@ -1244,6 +1339,19 @@ struct TrendsView: View {
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
+    
+    // MARK: - Data Export
+    
+    private func exportCurrentData() {
+        // TODO: Implement data export functionality
+        print("Export data for \(viewModel.selectedDataType) in range \(selectedTimeRange)")
+        
+        #if os(iOS)
+        let impact = UINotificationFeedbackGenerator()
+        impact.notificationOccurred(.success)
+        #endif
+    }
+}
 
 // MARK: - Extensions
 

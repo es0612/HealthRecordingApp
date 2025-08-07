@@ -36,7 +36,7 @@ enum TimeRange: String, CaseIterable, Codable {
 }
 
 /// Date range for data filtering with specific start and end dates
-struct DateRange: Codable {
+struct DateRange: Codable, Equatable {
     let startDate: Date
     let endDate: Date
     

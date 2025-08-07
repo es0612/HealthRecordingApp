@@ -522,6 +522,82 @@ final class TrendsViewModel {
     }
     
     @MainActor
+    func updateCustomDateRange(_ customRange: DateRange) async {
+        logger.logUserAction("update_custom_date_range", parameters: [
+            "startDate": customRange.startDate.timeIntervalSince1970,
+            "endDate": customRange.endDate.timeIntervalSince1970,
+            "dayCount": customRange.dayCount
+        ])
+        
+        // Update to use custom range logic
+        await loadCustomRangeData(customRange)
+    }
+    
+    // MARK: - Custom Range Data Loading
+    
+    @MainActor
+    private func loadCustomRangeData(_ customRange: DateRange) async {
+        logger.debug("Starting custom range trend data load", context: [
+            "customRange": "\(customRange.startDate) to \(customRange.endDate)"
+        ])
+        
+        guard !isLoading else {
+            logger.warning("Load already in progress, skipping", context: nil)
+            return
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        
+        do {
+            let startTime = Date()
+            logger.info("Loading custom range trend data", context: [
+                "startDate": customRange.startDate.timeIntervalSince1970,
+                "endDate": customRange.endDate.timeIntervalSince1970,
+                "dataType": selectedDataType.rawValue
+            ])
+            
+            // Fetch health records for custom range
+            let defaultUser = try User(name: "Default", age: 30, height: 170.0, targetWeight: 65.0)
+            let allRecords = try await fetchHealthDataUseCase.fetchHealthRecords(
+                for: defaultUser,
+                type: selectedDataType,
+                dateRange: customRange,
+                limit: nil
+            )
+            
+            // Perform trend analysis for custom range
+            let analysis = try await trendAnalyzer.analyzeTrends(from: allRecords, dateRange: customRange)
+            
+            // Update state
+            trendData = analysis.trendPoints
+            healthInsights = [] // TODO: Generate insights from analysis
+            trendAnalysis = analysis
+            
+            let duration = Date().timeIntervalSince(startTime)
+            logger.logPerformance("load_custom_range_trend_data", duration: duration, success: true)
+            logger.info("Successfully loaded custom range trend data", context: [
+                "trendPointCount": trendData.count,
+                "insightCount": healthInsights.count,
+                "trendDirection": analysis.direction.rawValue,
+                "confidence": analysis.confidence
+            ])
+            
+        } catch {
+            let duration = Date().timeIntervalSince(Date())
+            logger.logPerformance("load_custom_range_trend_data", duration: duration, success: false)
+            logger.error(error, context: [
+                "operation": "load_custom_range_trend_data",
+                "customRange": "\(customRange.startDate) to \(customRange.endDate)",
+                "dataType": selectedDataType.rawValue
+            ])
+            
+            errorMessage = handleError(error)
+        }
+    }
+    
+    @MainActor
     func updateDataType(_ newType: HealthDataType) {
         logger.logUserAction("update_data_type", parameters: [
             "oldType": selectedDataType.rawValue,
