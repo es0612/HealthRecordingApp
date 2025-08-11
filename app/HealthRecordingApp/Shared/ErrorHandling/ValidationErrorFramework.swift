@@ -488,9 +488,11 @@ extension ValidationErrorContext: CustomDebugStringConvertible {
 
 // MARK: - Error Handler
 
-class ValidationErrorHandler: ObservableObject {
-    @Published var currentError: (any UserFriendlyError)?
-    @Published var errorHistory: [any UserFriendlyError] = []
+@MainActor
+@Observable
+class ValidationErrorHandler {
+    var currentError: (any UserFriendlyError)?
+    var errorHistory: [any UserFriendlyError] = []
     
     private let logger: AILoggerProtocol
     private let maxHistoryCount = 50
@@ -500,14 +502,12 @@ class ValidationErrorHandler: ObservableObject {
     }
     
     func handle(_ error: any UserFriendlyError) {
-        DispatchQueue.main.async {
-            self.currentError = error
-            self.errorHistory.insert(error, at: 0)
-            
-            // Limit history size
-            if self.errorHistory.count > self.maxHistoryCount {
-                self.errorHistory.removeLast()
-            }
+        currentError = error
+        errorHistory.insert(error, at: 0)
+        
+        // Limit history size
+        if errorHistory.count > maxHistoryCount {
+            errorHistory.removeLast()
         }
         
         // Log error for AI analysis
@@ -521,15 +521,11 @@ class ValidationErrorHandler: ObservableObject {
     }
     
     func clearCurrentError() {
-        DispatchQueue.main.async {
-            self.currentError = nil
-        }
+        currentError = nil
     }
     
     func clearErrorHistory() {
-        DispatchQueue.main.async {
-            self.errorHistory.removeAll()
-        }
+        errorHistory.removeAll()
     }
     
     func getErrorsByCategory(_ category: ErrorCategory) -> [any UserFriendlyError] {

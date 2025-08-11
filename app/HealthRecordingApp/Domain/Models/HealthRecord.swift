@@ -1,5 +1,6 @@
 import SwiftData
 import Foundation
+import SwiftUI
 
 @Model
 final class HealthRecord: HealthRecordProtocol {
@@ -47,7 +48,7 @@ final class HealthRecord: HealthRecordProtocol {
     }
 }
 
-enum HealthDataType: String, CaseIterable, Codable {
+public enum HealthDataType: String, CaseIterable, Codable {
     case weight = "weight"
     case steps = "steps"  
     case calories = "calories"
@@ -81,6 +82,26 @@ enum HealthDataType: String, CaseIterable, Codable {
             return "bpm"
         case .bloodGlucose:
             return "mg/dL"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .weight: return .purple
+        case .steps: return .blue
+        case .calories: return .orange
+        case .heartRate: return .red
+        case .bloodGlucose: return .green
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .weight: return "scalemass"
+        case .steps: return "figure.walk"
+        case .calories: return "flame"
+        case .heartRate: return "heart"
+        case .bloodGlucose: return "drop"
         }
     }
 }

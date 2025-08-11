@@ -8,7 +8,7 @@ import BackgroundTasks
 // MARK: - Background Sync Manager
 
 #if os(iOS)
-final class BackgroundSyncManager: ObservableObject {
+final class BackgroundSyncManager {
     
     static let shared = BackgroundSyncManager()
     
@@ -283,7 +283,7 @@ enum BackgroundSyncError: LocalizedError {
 }
 #else
 // Placeholder for non-iOS platforms
-final class BackgroundSyncManager: ObservableObject {
+final class BackgroundSyncManager {
     static let shared = BackgroundSyncManager()
     private init() {}
     func registerBackgroundTasks() {}

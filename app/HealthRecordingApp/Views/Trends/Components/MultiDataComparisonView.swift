@@ -35,7 +35,9 @@ struct MultiDataComparisonView: View {
         }
         .padding()
         .navigationTitle("データ比較")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -190,7 +192,7 @@ struct MultiDataComparisonView: View {
                     AxisValueLabel(format: .dateTime.day().month(.abbreviated))
                 }
             }
-            .chartYAxis(comparisonMode == .sideBySide ? .trailing : .leading) {
+            .chartYAxis {
                 AxisMarks(position: .leading) { _ in
                     AxisGridLine()
                     AxisValueLabel()
@@ -304,13 +306,13 @@ struct MultiDataComparisonView: View {
             }
         }
         .padding()
-        .background(
+        .background({
             #if os(iOS)
-            Color(.systemGray6).opacity(0.5)
+            return Color(.systemGray6).opacity(0.5)
             #else
-            Color.gray.opacity(0.1)
+            return Color.gray.opacity(0.1)
             #endif
-        )
+        }())
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
     
@@ -629,14 +631,15 @@ struct MultiDataTypeSelectorSheet: View {
     
     var body: some View {
         NavigationStack {
-            List(HealthDataType.allCases, id: \.self) { dataType in
-                Button(action: {
-                    if selectedDataTypes.contains(dataType) {
-                        selectedDataTypes.remove(dataType)
-                    } else {
-                        selectedDataTypes.insert(dataType)
-                    }
-                }) {
+            List {
+                ForEach(HealthDataType.allCases, id: \.self) { dataType in
+                    Button(action: {
+                        if selectedDataTypes.contains(dataType) {
+                            selectedDataTypes.remove(dataType)
+                        } else {
+                            selectedDataTypes.insert(dataType)
+                        }
+                    }) {
                     HStack {
                         Image(systemName: dataType.iconName)
                             .font(.title3)
@@ -666,6 +669,7 @@ struct MultiDataTypeSelectorSheet: View {
                     .padding(.vertical, 2)
                 }
                 .buttonStyle(PlainButtonStyle())
+                }
             }
             .navigationTitle("比較データ選択")
             #if os(iOS)
@@ -739,4 +743,14 @@ private struct MockTrendAnalyzer: TrendAnalyzerProtocol {
     func calculateVariability(from values: [Double]) -> VariabilityMetrics {
         VariabilityMetrics(variance: 0.0, standardDeviation: 0.0, coefficientOfVariation: 0.0, range: 0.0, interquartileRange: 0.0)
     }
+    
+    func classifyTrend(from values: [Double], threshold: Double) -> TrendDirection { .stable }
+    
+    func calculateTrendStrength(from analysis: TrendAnalysis) -> Double { 0.5 }
+    
+    func assessDataQuality(records: [HealthRecordProtocol]) -> DataQualityAssessment {
+        DataQualityAssessment(completeness: 1.0, consistency: 1.0, accuracy: 1.0, timeliness: 1.0, overallScore: 1.0, issues: [])
+    }
+    
+    func identifyDataGaps(in records: [HealthRecordProtocol], expectedFrequency: DataFrequency) -> [DateRange] { [] }
 }

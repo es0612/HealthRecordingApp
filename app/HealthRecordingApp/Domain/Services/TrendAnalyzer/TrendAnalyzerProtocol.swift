@@ -96,7 +96,7 @@ protocol TrendAnalyzerProtocol {
 
 // MARK: - Supporting Types
 
-enum OutlierDetectionMethod: String, CaseIterable {
+enum OutlierDetectionMethod: String, CaseIterable, Codable {
     case zScore = "z_score"
     case iqr = "iqr"
     case modifiedZScore = "modified_z_score"

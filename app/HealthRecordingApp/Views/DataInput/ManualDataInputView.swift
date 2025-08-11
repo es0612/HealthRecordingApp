@@ -484,7 +484,10 @@ struct ManualDataInputView: View {
                 // Create mock user for manual entry
                 let mockUser = try User(name: "テストユーザー", age: 30, height: 175.0, targetWeight: 70.0)
                 
-                _ = try await recordHealthDataUseCase.recordManualData(manualData, for: mockUser)
+                let savedRecord = try await recordHealthDataUseCase.recordManualData(manualData, for: mockUser)
+                
+                // Phase 11.3: 目標達成チェックを実行
+                await processGoalAchievements(for: savedRecord)
                 
                 await MainActor.run {
                     isLoading = false
@@ -520,6 +523,65 @@ struct ManualDataInputView: View {
         currentValidationErrors = []
         validationResult = .success
         validationFeedback = ""
+    }
+    
+    // MARK: - Phase 11.3: Goal Achievement Integration
+    
+    /// 保存されたレコードに対して目標達成チェックを実行
+    @MainActor
+    private func processGoalAchievements(for record: HealthRecord) async {
+        logger.info("手動入力データの目標達成チェック開始", context: [
+            "recordId": record.id.uuidString,
+            "dataType": record.type.rawValue,
+            "value": record.value
+        ])
+        
+        do {
+            // 目標達成処理の依存関係を構築
+            let dependencies = createGoalAchievementDependencies()
+            
+            // 目標達成処理を実行
+            try await GoalAchievementIntegrationHelper.processNewRecord(
+                record,
+                using: dependencies
+            )
+            
+            logger.info("手動入力データの目標達成チェック完了", context: [
+                "recordId": record.id.uuidString
+            ])
+            
+        } catch {
+            // 目標達成チェックのエラーは致命的ではないため、ログのみ記録
+            logger.warning("目標達成チェック中にエラーが発生", context: [
+                "recordId": record.id.uuidString,
+                "error": error.localizedDescription
+            ])
+        }
+    }
+    
+    /// 目標達成処理用の依存関係を作成
+    private func createGoalAchievementDependencies() -> GoalAchievementDependencies {
+        // SwiftDataベースのRepository実装
+        let goalRepository = SwiftDataGoalRepository(modelContext: modelContext)
+        let healthRecordRepository = SwiftDataHealthRecordRepository(modelContext: modelContext)
+        
+        // GoalTrackerとNotificationManagerを初期化
+        let goalTracker = GoalTracker(logger: logger)
+        let notificationManager = NotificationManager(logger: logger)
+        
+        // 目標達成通知サービスを初期化
+        let goalAchievementService = GoalAchievementNotificationService(
+            goalTracker: goalTracker,
+            notificationManager: notificationManager,
+            logger: logger
+        )
+        
+        return GoalAchievementDependencies(
+            goalRepository: goalRepository,
+            healthRecordRepository: healthRecordRepository,
+            goalAchievementService: goalAchievementService,
+            logger: logger
+        )
     }
     
     // MARK: - Validation Methods
@@ -2057,23 +2119,7 @@ struct DataTypeCard: View {
 }
 
 // MARK: - HealthDataType Extensions
-
-extension HealthDataType {
-    var iconName: String {
-        switch self {
-        case .weight:
-            return "scalemass"
-        case .steps:
-            return "figure.walk"
-        case .calories:
-            return "flame"
-        case .heartRate:
-            return "heart"
-        case .bloodGlucose:
-            return "drop"
-        }
-    }
-}
+// iconName extension removed - now defined in HealthRecord.swift
 
 // MARK: - Supporting Types
 

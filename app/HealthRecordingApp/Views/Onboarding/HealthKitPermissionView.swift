@@ -3,7 +3,7 @@ import HealthKit
 
 struct HealthKitPermissionView: View {
     // MARK: - Properties
-    @StateObject private var authManager: HealthKitAuthenticationManager
+    @State private var authManager: HealthKitAuthenticationManager
     @State private var showingError = false
     @State private var errorMessage = ""
     
@@ -18,7 +18,7 @@ struct HealthKitPermissionView: View {
         onPermissionDenied: @escaping () -> Void,
         onSkip: (() -> Void)? = nil
     ) {
-        self._authManager = StateObject(wrappedValue: authManager)
+        self.authManager = authManager
         self.onPermissionGranted = onPermissionGranted
         self.onPermissionDenied = onPermissionDenied
         self.onSkip = onSkip

@@ -4,16 +4,17 @@ import HealthKit
 /// Manager for handling HealthKit authentication flow
 /// Provides high-level operations for permission requests and status checking
 @MainActor
-final class HealthKitAuthenticationManager: ObservableObject {
+@Observable
+final class HealthKitAuthenticationManager {
     
     // MARK: - Properties
     
     private let healthKitService: HealthKitServiceProtocol
     private let logger: AILoggerProtocol
     
-    @Published var isAuthenticationInProgress = false
-    @Published var lastAuthenticationError: Error?
-    @Published var authenticationStatus: HealthKitAuthenticationStatus = .notDetermined
+    var isAuthenticationInProgress = false
+    var lastAuthenticationError: Error?
+    var authenticationStatus: HealthKitAuthenticationStatus = .notDetermined
     
     // MARK: - Initialization
     

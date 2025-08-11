@@ -268,6 +268,14 @@ struct PresetRangeCard: View {
     let isSelected: Bool
     let onTap: () -> Void
     
+    private var backgroundColorUnselected: Color {
+        #if os(iOS)
+        return Color(.systemGray6)
+        #else
+        return Color.gray.opacity(0.1)
+        #endif
+    }
+    
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 8) {
@@ -289,13 +297,7 @@ struct PresetRangeCard: View {
             .frame(width: 80, height: 90)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? Color.accentColor : 
-                          #if os(iOS)
-                          Color(.systemGray6)
-                          #else
-                          Color.gray.opacity(0.1)
-                          #endif
-                    )
+                    .fill(isSelected ? Color.accentColor : backgroundColorUnselected)
                     .shadow(
                         color: isSelected ? Color.accentColor.opacity(0.3) : Color.black.opacity(0.1),
                         radius: isSelected ? 6 : 2,
@@ -375,6 +377,14 @@ struct QuickAccessButton: View {
     let icon: String
     let action: () -> Void
     
+    private var backgroundColorSecondary: Color {
+        #if os(iOS)
+        return Color(.systemGray6)
+        #else
+        return Color.gray.opacity(0.1)
+        #endif
+    }
+    
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -397,13 +407,7 @@ struct QuickAccessButton: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(
-                #if os(iOS)
-                Color(.systemGray6)
-                #else
-                Color.gray.opacity(0.1)
-                #endif
-            )
+            .background(backgroundColorSecondary)
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(PlainButtonStyle())
@@ -422,6 +426,14 @@ struct CustomDateRangePicker: View {
     @State private var tempEndDate: Date
     @State private var showingValidationError = false
     @State private var validationMessage = ""
+    
+    private var backgroundColorTertiary: Color {
+        #if os(iOS)
+        return Color(.systemGray6)
+        #else
+        return Color.gray.opacity(0.1)
+        #endif
+    }
     
     init(startDate: Binding<Date>, endDate: Binding<Date>, onSave: @escaping (Date, Date) -> Void, onCancel: @escaping () -> Void) {
         self._startDate = startDate
@@ -516,13 +528,7 @@ struct CustomDateRangePicker: View {
             .font(.subheadline)
         }
         .padding()
-        .background(
-            #if os(iOS)
-            Color(.systemGray6)
-            #else
-            Color.gray.opacity(0.1)
-            #endif
-        )
+        .background(backgroundColorTertiary)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
     

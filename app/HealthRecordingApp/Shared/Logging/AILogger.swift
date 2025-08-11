@@ -168,7 +168,7 @@ struct AILoggerConfiguration {
 }
 
 /// ログレベルの定義
-enum AILogLevel: Int, CaseIterable {
+public enum AILogLevel: Int, CaseIterable {
     case debug = 0
     case info = 1
     case warning = 2
@@ -201,7 +201,7 @@ struct AILogSource {
 }
 
 /// AILoggerプロトコル
-protocol AILoggerProtocol {
+public protocol AILoggerProtocol {
     var logLevel: AILogLevel { get }
     var isEnabled: Bool { get }
     var shouldRedactPII: Bool { get }
