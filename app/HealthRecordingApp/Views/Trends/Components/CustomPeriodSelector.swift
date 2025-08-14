@@ -166,18 +166,24 @@ struct CustomPeriodSelector: View {
             return "\(formatter.string(from: customRange.startDate)) - \(formatter.string(from: customRange.endDate))"
         }
         
-        let now = Date()
-        let calendar = Calendar.current
+        let _ = Date() // Future use for date calculations
+        let _ = Calendar.current // Future use for calendar operations
         
         switch selectedTimeRange {
         case .week:
             return "過去7日間"
         case .month:
             return "過去30日間"
+        case .threeMonths:
+            return "過去3ヶ月間"
+        case .sixMonths:
+            return "過去6ヶ月間"
         case .quarter:
             return "過去90日間"
         case .year:
             return "過去365日間"
+        case .custom:
+            return "カスタム期間"
         }
     }
     

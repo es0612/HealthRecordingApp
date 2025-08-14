@@ -4,11 +4,11 @@ import SwiftUI
 /// 通知機能の統合管理クラス
 @MainActor
 @Observable
-public final class NotificationManager {
+public class NotificationManager {
     
     // MARK: - Properties
     
-    private let notificationService: NotificationServiceProtocol
+    internal let notificationService: NotificationServiceProtocol
     private let reminderScheduler: ReminderNotificationScheduler
     private let logger: AILoggerProtocol
     
@@ -257,6 +257,23 @@ public final class NotificationManager {
         await updateNotificationStats()
     }
     
+    // MARK: - Public Service Access
+    
+    /// 通知権限状態を取得
+    public func getAuthorizationStatus() async -> NotificationAuthorizationStatus {
+        return await notificationService.getAuthorizationStatus()
+    }
+    
+    /// 通知設定を取得
+    public func getNotificationSettings() async -> [NotificationSettings] {
+        return await notificationService.getNotificationSettings()
+    }
+    
+    /// 特定タイプの通知設定を取得
+    public func getNotificationSettings(for type: AppNotificationType) async -> NotificationSettings {
+        return await notificationService.getNotificationSettings(for: type) ?? NotificationSettings(type: type)
+    }
+    
     // MARK: - Analytics and Insights
     
     /// 通知効果分析
@@ -287,6 +304,18 @@ public final class NotificationManager {
             dayOfWeek: 1, // 日曜日
             time: Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
         )
+    }
+    
+    // MARK: - Protected Helper Methods (for subclasses)
+    
+    /// 権限状態を直接設定（テスト用）
+    func updateAuthorizationStatus(_ status: NotificationAuthorizationStatus) {
+        authorizationStatus = status
+    }
+    
+    /// 初期化フラグを設定（テスト用）
+    func setInitialized(_ initialized: Bool) {
+        isInitialized = initialized
     }
 }
 
@@ -387,13 +416,7 @@ private extension NotificationManager {
 
 // MARK: - Supporting Types
 
-/// 健康アラートの重要度
-public enum HealthAlertSeverity: String, CaseIterable {
-    case low = "low"
-    case normal = "normal"
-    case high = "high"
-    case urgent = "urgent"
-}
+
 
 /// 通知効果分析結果
 struct NotificationEffectivenessAnalysis {
@@ -437,13 +460,13 @@ public final class MockNotificationManager: NotificationManager {
     }
     
     public override func requestNotificationPermission() async throws -> Bool {
-        authorizationStatus = .authorized
+        updateAuthorizationStatus(.authorized)
         return true
     }
     
     public override func setupDefaultReminders() async throws {
         // モック実装：何もしない
-        isInitialized = true
+        setInitialized(true)
     }
 }
 #endif

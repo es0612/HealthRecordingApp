@@ -1,9 +1,9 @@
 import Foundation
 
-final class GoalTracker: GoalTrackerProtocol {
+public final class GoalTracker: GoalTrackerProtocol {
     private let logger: AILoggerProtocol
     
-    init(logger: AILoggerProtocol = AILogger()) {
+    public init(logger: AILoggerProtocol = AILogger()) {
         self.logger = logger
     }
     
@@ -1013,6 +1013,30 @@ private extension GoalTracker {
             // Average recent values
             let recent = records.filter { $0.timestamp.timeIntervalSinceNow > -24 * 60 * 60 }
             return recent.isEmpty ? 0.0 : recent.reduce(0) { $0 + $1.value } / Double(recent.count)
+        case .bloodPressure:
+            // Use latest value for blood pressure
+            return records.max(by: { $0.timestamp < $1.timestamp })?.value ?? 0.0
+        case .sleep:
+            // Use latest daily sleep value
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let todayRecords = records.filter { calendar.startOfDay(for: $0.timestamp) >= today }
+            return todayRecords.max(by: { $0.timestamp < $1.timestamp })?.value ?? 0.0
+        case .hydration:
+            // Sum daily hydration values
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let todayRecords = records.filter { calendar.startOfDay(for: $0.timestamp) >= today }
+            return todayRecords.reduce(0) { $0 + $1.value }
+        case .exercise:
+            // Sum daily exercise values
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let todayRecords = records.filter { calendar.startOfDay(for: $0.timestamp) >= today }
+            return todayRecords.reduce(0) { $0 + $1.value }
+        case .custom:
+            // Use latest value for custom goals
+            return records.max(by: { $0.timestamp < $1.timestamp })?.value ?? 0.0
         }
     }
     

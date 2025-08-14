@@ -2,42 +2,42 @@ import Foundation
 import os.log
 
 /// AI連携対応のログ機能を提供するメインクラス
-final class AILogger: AILoggerProtocol {
+public final class AILogger: AILoggerProtocol {
     private let configuration: AILoggerConfiguration
     private let output: AILogOutputProtocol
     private let queue: DispatchQueue
     
-    var logLevel: AILogLevel {
+    public var logLevel: AILogLevel {
         return configuration.logLevel
     }
     
-    var isEnabled: Bool {
+    public var isEnabled: Bool {
         return configuration.isEnabled
     }
     
-    var shouldRedactPII: Bool {
+    public var shouldRedactPII: Bool {
         return configuration.shouldRedactPII
     }
     
-    init(configuration: AILoggerConfiguration = AILoggerConfiguration(), output: AILogOutputProtocol? = nil) {
+    public init(configuration: AILoggerConfiguration = AILoggerConfiguration(), output: AILogOutputProtocol? = nil) {
         self.configuration = configuration
         self.output = output ?? ConsoleLogOutput()
         self.queue = DispatchQueue(label: "com.healthrecordingapp.ailogger", qos: .utility)
     }
     
-    func debug(_ message: String, context: [String: Any]? = nil) {
+    public func debug(_ message: String, context: [String: Any]? = nil) {
         log(level: .debug, message: message, context: context)
     }
     
-    func info(_ message: String, context: [String: Any]? = nil) {
+    public func info(_ message: String, context: [String: Any]? = nil) {
         log(level: .info, message: message, context: context)
     }
     
-    func warning(_ message: String, context: [String: Any]? = nil) {
+    public func warning(_ message: String, context: [String: Any]? = nil) {
         log(level: .warning, message: message, context: context)
     }
     
-    func error(_ error: Error, context: [String: Any]? = nil) {
+    public func error(_ error: Error, context: [String: Any]? = nil) {
         var errorContext = context ?? [:]
         errorContext["error_domain"] = (error as NSError).domain
         errorContext["error_code"] = (error as NSError).code
@@ -46,7 +46,7 @@ final class AILogger: AILoggerProtocol {
         log(level: .error, message: error.localizedDescription, context: errorContext)
     }
     
-    func logUserAction(_ action: String, parameters: [String: Any]? = nil) {
+    public func logUserAction(_ action: String, parameters: [String: Any]? = nil) {
         var actionContext: [String: Any] = [
             "action_type": "user_interaction",
             "action": action
@@ -61,7 +61,7 @@ final class AILogger: AILoggerProtocol {
         log(level: .info, message: "User action: \(action)", context: actionContext)
     }
     
-    func logPerformance(_ operation: String, duration: TimeInterval, success: Bool) {
+    public func logPerformance(_ operation: String, duration: TimeInterval, success: Bool) {
         let performanceContext: [String: Any] = [
             "operation": operation,
             "duration": duration,
@@ -148,13 +148,13 @@ final class AILogger: AILoggerProtocol {
 }
 
 /// AILoggerの設定
-struct AILoggerConfiguration {
+public struct AILoggerConfiguration {
     let logLevel: AILogLevel
     let isEnabled: Bool
     let shouldRedactPII: Bool
     let maxLogSize: Int
     
-    init(
+    public init(
         logLevel: AILogLevel = .info,
         isEnabled: Bool = true,
         shouldRedactPII: Bool = true,
@@ -185,7 +185,7 @@ public enum AILogLevel: Int, CaseIterable {
 }
 
 /// ログメッセージの構造
-struct AILogMessage {
+public struct AILogMessage {
     let level: AILogLevel
     let message: String
     let context: [String: Any]?
@@ -215,7 +215,7 @@ public protocol AILoggerProtocol {
 }
 
 /// ログ出力プロトコル
-protocol AILogOutputProtocol {
+public protocol AILogOutputProtocol {
     func write(_ message: AILogMessage)
     func flush()
 }

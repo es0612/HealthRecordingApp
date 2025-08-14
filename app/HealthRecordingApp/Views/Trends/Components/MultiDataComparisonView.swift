@@ -691,7 +691,7 @@ struct MultiDataTypeSelectorSheet: View {
 #Preview {
     struct PreviewContainer: View {
         @State private var mockViewModel = TrendsViewModel(
-            fetchHealthDataUseCase: MockFetchHealthDataUseCase(),
+            fetchHealthDataUseCase: MultiDataMockFetchHealthDataUseCase(),
             trendAnalyzer: MockTrendAnalyzer()
         )
         
@@ -706,7 +706,7 @@ struct MultiDataTypeSelectorSheet: View {
 }
 
 // Mock implementations for preview
-private struct MockFetchHealthDataUseCase: FetchHealthDataUseCaseProtocol {
+private struct MultiDataMockFetchHealthDataUseCase: FetchHealthDataUseCaseProtocol {
     func fetchHealthRecords(for user: User, type: HealthDataType?, dateRange: DateRange?, limit: Int?) async throws -> [HealthRecord] { [] }
     func fetchLatestRecord(for user: User, type: HealthDataType) async throws -> HealthRecord? { nil }
     func fetchRecordsGroupedByDay(for user: User, type: HealthDataType, dateRange: DateRange) async throws -> [Date: [HealthRecord]] { [:] }

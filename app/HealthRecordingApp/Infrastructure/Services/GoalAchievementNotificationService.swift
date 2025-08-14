@@ -61,19 +61,21 @@ public final class GoalAchievementNotificationService {
                 )
                 
                 // 目標完了チェック
-                if progressAnalysis.isCompleted && !goal.isCompleted {
+                if goal.isCompleted && progressAnalysis.progress >= 1.0 {
                     achievedGoals.append(goal)
                     logger.info("目標完了検知", context: [
                         "goalId": goal.id.uuidString,
                         "goalType": goal.type.rawValue,
-                        "finalValue": progressAnalysis.currentValue
+                        "finalValue": goal.currentValue
                     ])
                 }
                 
                 // マイルストーン達成チェック
+                // Convert GoalProgressDetail to GoalProgressAnalysis format
+                let goalAnalysis = GoalProgressAnalysis(goal: goal, healthRecords: recentRecords)
                 let milestoneUpdates = try await checkMilestoneAchievements(
                     for: goal,
-                    progressAnalysis: progressAnalysis
+                    progressAnalysis: goalAnalysis
                 )
                 completedMilestones.append(contentsOf: milestoneUpdates)
                 
@@ -123,15 +125,32 @@ public final class GoalAchievementNotificationService {
         let milestones = try await getOrGenerateMilestones(for: goal)
         
         // 進捗に基づいてマイルストーン達成状況を更新
-        let updatedMilestones = goalTracker.updateMilestoneProgress(
-            milestones: milestones,
-            currentValue: progressAnalysis.currentValue
+        // Convert GoalMilestone to Milestone for GoalTracker compatibility
+        let standardMilestones = milestones.map { goalMilestone in
+            Milestone(
+                goalId: goal.id,
+                title: goalMilestone.title,
+                description: goalMilestone.description,
+                targetValue: goalMilestone.targetValue,
+                currentValue: progressAnalysis.goal.currentValue,
+                progress: progressAnalysis.goal.currentValue / goalMilestone.targetValue,
+                isCompleted: goalMilestone.isCompleted,
+                completedDate: goalMilestone.completedAt,
+                targetDate: goalMilestone.targetDate,
+                priority: goalMilestone.priority,
+                category: goalMilestone.category
+            )
+        }
+        
+        let updatedStandardMilestones = goalTracker.updateMilestoneProgress(
+            milestones: standardMilestones,
+            currentValue: progressAnalysis.goal.currentValue
         )
         
         // 新たに達成されたマイルストーンを特定
         let newlyCompleted = goalTracker.checkMilestoneCompletion(
-            milestones: updatedMilestones,
-            currentValue: progressAnalysis.currentValue
+            milestones: updatedStandardMilestones,
+            currentValue: progressAnalysis.goal.currentValue
         )
         
         // 重複処理を防ぐため処理済みマイルストーンをフィルタリング
@@ -153,21 +172,48 @@ public final class GoalAchievementNotificationService {
             ])
         }
         
-        return unprocessedMilestones
+        // Convert back to GoalMilestone format
+        let completedGoalMilestones = unprocessedMilestones.map { milestone in
+            GoalMilestone(
+                id: milestone.id,
+                title: milestone.title,
+                description: milestone.description,
+                targetValue: milestone.targetValue,
+                isCompleted: milestone.isCompleted,
+                completedAt: milestone.completedDate,
+                createdAt: Date() // Use current date as fallback
+            )
+        }
+        
+        return completedGoalMilestones
     }
     
     /// 目標のマイルストーンを取得または生成
     private func getOrGenerateMilestones(for goal: Goal) async throws -> [GoalMilestone] {
         // 既存のマイルストーンがある場合は取得
-        if let existingMilestones = goal.milestones, !existingMilestones.isEmpty {
-            return existingMilestones
-        }
+        // Note: Goal doesn't have milestones property yet, so we always generate new ones
+        // if let existingMilestones = goal.milestones, !existingMilestones.isEmpty {
+        //     return existingMilestones
+        // }
         
         // マイルストーンがない場合は生成
-        let generatedMilestones = goalTracker.generateMilestones(
+        let standardMilestones = try await goalTracker.generateMilestones(
             for: goal,
-            strategy: .balanced // バランスの取れたマイルストーン戦略
+            strategy: .adaptive // アダプティブなマイルストーン戦略
         )
+        
+        // Convert Milestone to GoalMilestone format
+        let generatedMilestones = standardMilestones.map { milestone in
+            GoalMilestone(
+                title: milestone.title,
+                description: milestone.description,
+                targetValue: milestone.targetValue,
+                isCompleted: milestone.isCompleted,
+                category: milestone.category,
+                priority: milestone.priority,
+                targetDate: milestone.targetDate
+            )
+        }
         
         logger.info("マイルストーン生成", context: [
             "goalId": goal.id.uuidString,
@@ -239,7 +285,7 @@ public final class GoalAchievementNotificationService {
                 let previousDate = sortedDates[i - 1]
                 let currentDate = sortedDates[i]
                 
-                if calendar.dateInterval(from: previousDate, to: currentDate)?.duration == 86400 { // 1日差
+                if calendar.dateComponents([.day], from: previousDate, to: currentDate).day == 1 { // 1日差
                     tempStreak += 1
                 } else {
                     longestStreak = max(longestStreak, tempStreak)
@@ -276,7 +322,7 @@ public final class GoalAchievementNotificationService {
             let currentDate = sortedDates[i + 1]
             let previousDate = sortedDates[i]
             
-            if calendar.dateInterval(from: previousDate, to: currentDate)?.duration == 86400 {
+            if calendar.dateComponents([.day], from: previousDate, to: currentDate).day == 1 {
                 streak += 1
             } else {
                 break
@@ -425,43 +471,52 @@ struct StreakInfo {
 
 // MARK: - Extensions
 
-extension Goal {
-    /// 目標が完了しているかどうか
-    var isCompleted: Bool {
-        return currentValue >= targetValue
-    }
-    
-    /// マイルストーン（一時的な実装 - 実際はGoalモデルに含める）
-    var milestones: [GoalMilestone]? {
-        // 一時的にnilを返す（実際の実装では永続化されたマイルストーンを返す）
-        return nil
-    }
-}
+
 
 // 一時的なマイルストーンモデル定義（実際は別ファイルに配置）
 struct GoalMilestone {
-    let id = UUID()
+    let id: UUID
     let title: String
     let description: String
     let targetValue: Double
     let isCompleted: Bool
+    let completedAt: Date?
+    let createdAt: Date
     let category: MilestoneCategory
     let priority: MilestonePriority
     let targetDate: Date
+    
+    init(title: String, description: String, targetValue: Double, isCompleted: Bool = false, category: MilestoneCategory, priority: MilestonePriority, targetDate: Date) {
+        self.id = UUID()
+        self.title = title
+        self.description = description
+        self.targetValue = targetValue
+        self.isCompleted = isCompleted
+        self.completedAt = isCompleted ? Date() : nil
+        self.createdAt = Date()
+        self.category = category
+        self.priority = priority
+        self.targetDate = targetDate
+    }
+    
+    init(id: UUID, title: String, description: String, targetValue: Double, isCompleted: Bool, completedAt: Date?, createdAt: Date) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.targetValue = targetValue
+        self.isCompleted = isCompleted
+        self.completedAt = completedAt
+        self.createdAt = createdAt
+        self.category = .weekly // Default category
+        self.priority = .medium // Default priority
+        self.targetDate = Date() // Default target date
+    }
 }
 
-enum MilestoneCategory: String {
-    case short = "short"      // 短期
-    case medium = "medium"    // 中期  
-    case long = "long"        // 長期
-}
-
-enum MilestonePriority: String {
-    case low = "low"
-    case medium = "medium"
-    case high = "high"
-    case critical = "critical"
-}
+// MilestoneCategory and MilestonePriority are defined in GoalProgressDetail.swift
+// Using typealias to reference the existing definitions
+typealias ServiceMilestoneCategory = MilestoneCategory
+typealias ServiceMilestonePriority = MilestonePriority
 
 // 一時的なNotificationContent拡張
 extension NotificationContent {

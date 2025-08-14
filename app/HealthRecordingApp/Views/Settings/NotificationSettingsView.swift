@@ -45,9 +45,15 @@ struct NotificationSettingsView: View {
                 .padding()
             }
             .navigationTitle("通知設定")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
+                #else
+                ToolbarItem(placement: .confirmationAction) {
+                #endif
                     Button("完了") {
                         dismiss()
                     }
@@ -424,37 +430,37 @@ struct NotificationSettingsView: View {
                 VStack(spacing: 8) {
                     HealthAlertSeverityToggle(
                         severity: .low,
-                        isEnabled: viewModel.enabledAlertSeverities.contains(.low)
+                        isEnabled: self.viewModel.enabledAlertSeverities.contains(.low)
                     ) { enabled in
                         Task {
-                            await viewModel.toggleAlertSeverity(.low, enabled: enabled)
+                            await self.viewModel.toggleAlertSeverity(.low, enabled: enabled)
                         }
                     }
                     
                     HealthAlertSeverityToggle(
                         severity: .normal,
-                        isEnabled: viewModel.enabledAlertSeverities.contains(.normal)
+                        isEnabled: self.viewModel.enabledAlertSeverities.contains(.normal)
                     ) { enabled in
                         Task {
-                            await viewModel.toggleAlertSeverity(.normal, enabled: enabled)
+                            await self.viewModel.toggleAlertSeverity(.normal, enabled: enabled)
                         }
                     }
                     
                     HealthAlertSeverityToggle(
                         severity: .high,
-                        isEnabled: viewModel.enabledAlertSeverities.contains(.high)
+                        isEnabled: self.viewModel.enabledAlertSeverities.contains(.high)
                     ) { enabled in
                         Task {
-                            await viewModel.toggleAlertSeverity(.high, enabled: enabled)
+                            await self.viewModel.toggleAlertSeverity(.high, enabled: enabled)
                         }
                     }
                     
                     HealthAlertSeverityToggle(
                         severity: .critical,
-                        isEnabled: viewModel.enabledAlertSeverities.contains(.critical)
+                        isEnabled: self.viewModel.enabledAlertSeverities.contains(.critical)
                     ) { enabled in
                         Task {
-                            await viewModel.toggleAlertSeverity(.critical, enabled: enabled)
+                            await self.viewModel.toggleAlertSeverity(.critical, enabled: enabled)
                         }
                     }
                 }
@@ -491,7 +497,7 @@ struct NotificationSettingsView: View {
                 HStack {
                     Button("すべて有効") {
                         Task {
-                            await viewModel.enableAllNotifications()
+                            await self.viewModel.enableAllNotifications()
                         }
                     }
                     .buttonStyle(.bordered)
@@ -501,7 +507,7 @@ struct NotificationSettingsView: View {
                     
                     Button("すべて無効") {
                         Task {
-                            await viewModel.disableAllNotifications()
+                            await self.viewModel.disableAllNotifications()
                         }
                     }
                     .buttonStyle(.bordered)
@@ -510,7 +516,7 @@ struct NotificationSettingsView: View {
                 
                 Button("設定をリセット") {
                     Task {
-                        await viewModel.resetAllSettings()
+                        await self.viewModel.resetAllSettings()
                     }
                 }
                 .buttonStyle(.bordered)
@@ -528,7 +534,6 @@ struct NotificationSettingsView: View {
                 )
         )
     }
-}
 
 // MARK: - Supporting Views
 
@@ -681,15 +686,22 @@ struct TimePickerSheet: View {
                     selection: $selectedTime,
                     displayedComponents: [.hourAndMinute]
                 )
+                #if os(iOS)
                 .datePickerStyle(.wheel)
+                #else
+                .datePickerStyle(.compact)
+                #endif
                 .labelsHidden()
                 
                 Spacer()
             }
             .padding()
             .navigationTitle("時間を選択")
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("キャンセル") {
                         dismiss()
@@ -703,43 +715,30 @@ struct TimePickerSheet: View {
                     }
                     .fontWeight(.semibold)
                 }
+                #else
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完了") {
+                        onTimeSelected(selectedTime)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+                #endif
             }
         }
     }
 }
 
 // MARK: - Extensions
+// 以下のextensionはNotificationModels.swiftで既に定義されているため一時的にコメントアウト
 
-extension NotificationAuthorizationStatus {
-    var displayName: String {
-        switch self {
-        case .notDetermined:
-            return "未設定"
-        case .denied:
-            return "拒否"
-        case .authorized:
-            return "許可済み"
-        case .provisional:
-            return "仮許可"
-        case .ephemeral:
-            return "一時許可"
-        @unknown default:
-            return "不明"
-        }
-    }
-    
-    var isAuthorized: Bool {
-        switch self {
-        case .authorized, .provisional, .ephemeral:
-            return true
-        case .notDetermined, .denied:
-            return false
-        @unknown default:
-            return false
-        }
-    }
-}
-
+/*
 extension AppNotificationType {
     var displayName: String {
         switch self.rawValue {
@@ -862,6 +861,7 @@ extension HealthAlertSeverity {
         }
     }
 }
+*/
 
 #Preview {
     NotificationSettingsView()

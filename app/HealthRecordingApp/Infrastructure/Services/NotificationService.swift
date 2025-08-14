@@ -1,6 +1,9 @@
 import Foundation
 import UserNotifications
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 /// 通知サービスの実装クラス
 @MainActor
@@ -60,7 +63,7 @@ public final class NotificationService: NSObject, NotificationServiceProtocol {
     }
     
     public func requestAuthorization() async throws -> Bool {
-        logger.info("通知権限要求開始")
+        logger.info("通知権限要求開始", context: nil)
         
         do {
             let granted = try await notificationCenter.requestAuthorization(
@@ -86,17 +89,20 @@ public final class NotificationService: NSObject, NotificationServiceProtocol {
     }
     
     public func promptForSettings() async {
-        logger.info("設定画面遷移プロンプト表示")
+        logger.info("設定画面遷移プロンプト表示", context: nil)
         
+        #if os(iOS)
         guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
-            logger.warning("設定画面URLの取得に失敗")
+            logger.warning("設定画面URLの取得に失敗", context: nil)
             return
         }
         
-        #if os(iOS)
         if await UIApplication.shared.canOpenURL(settingsURL) {
             await UIApplication.shared.open(settingsURL)
+            logger.info("設定画面を開きました", context: nil)
         }
+        #else
+        logger.warning("設定画面遷移はiOSでのみ利用可能", context: nil)
         #endif
     }
     
@@ -135,12 +141,12 @@ public final class NotificationService: NSObject, NotificationServiceProtocol {
         await cancelNotifications(ofType: settings.type)
         
         if settings.isEnabled {
-            try await scheduleRecurringNotification(for: settings)
+            _ = try await scheduleRecurringNotification(for: settings)
         }
     }
     
     public func resetNotificationSettings() async throws {
-        logger.info("通知設定リセット")
+        logger.info("通知設定リセット", context: nil)
         
         // 全通知をキャンセル
         await cancelAllNotifications()
@@ -333,8 +339,14 @@ public final class NotificationService: NSObject, NotificationServiceProtocol {
                 title: request.content.title,
                 body: request.content.body,
                 badge: request.content.badge?.intValue,
-                sound: request.content.sound?.name,
-                data: request.content.userInfo.compactMapValues { $0 as? String }
+                sound: nil, // UNNotificationSound doesn't expose name property
+                data: Dictionary(uniqueKeysWithValues: 
+                    request.content.userInfo.compactMap { key, value in
+                        guard let stringKey = key as? String,
+                              let stringValue = value as? String else { return nil }
+                        return (stringKey, stringValue)
+                    }
+                )
             )
             
             return ScheduledNotification(
@@ -424,33 +436,35 @@ public final class NotificationService: NSObject, NotificationServiceProtocol {
 
 extension NotificationService: UNUserNotificationCenterDelegate {
     
-    public func userNotificationCenter(
+    nonisolated public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        logger.debug("フォアグラウンド通知受信", context: [
-            "identifier": notification.request.identifier
-        ])
+        Task { @MainActor in
+            logger.debug("フォアグラウンド通知受信", context: [
+                "identifier": notification.request.identifier
+            ])
+        }
         
         // フォアグラウンドでも通知を表示
         completionHandler([.banner, .sound, .badge])
     }
     
-    public func userNotificationCenter(
+    nonisolated public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let identifier = response.notification.request.identifier
         
-        logger.info("通知応答受信", context: [
-            "identifier": identifier,
-            "actionIdentifier": response.actionIdentifier
-        ])
-        
-        // エンゲージメントを記録
-        Task {
+        Task { @MainActor in
+            logger.info("通知応答受信", context: [
+                "identifier": identifier,
+                "actionIdentifier": response.actionIdentifier
+            ])
+            
+            // エンゲージメントを記録
             await recordNotificationEngagement(identifier)
         }
         

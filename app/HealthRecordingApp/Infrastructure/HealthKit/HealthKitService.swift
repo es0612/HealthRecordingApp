@@ -150,7 +150,7 @@ final class HealthKitService {
         let writeTypes = Set(supportedTypes)
         
         do {
-            let result: Bool = try await withCheckedThrowingContinuation { continuation in
+            let _: Bool = try await withCheckedThrowingContinuation { continuation in
                 healthStore.requestAuthorization(toShare: writeTypes, read: readTypes) { success, error in
                     if let error = error {
                         continuation.resume(throwing: HealthKitError.dataAccessFailed(error))
@@ -379,16 +379,18 @@ final class HealthKitService {
                     let healthKitData = try await self.readNewHealthData(type: dataType, limit: 100)
                     
                     // HealthKitDataをHealthRecordに変換
-                    let healthRecords = healthKitData.map { data in
-                        let record = HealthRecord(
-                            type: data.type,
-                            value: data.value,
-                            unit: data.unit,
-                            source: .healthKit
-                        )
-                        // HealthKitデータの実際のタイムスタンプを設定
-                        record.timestamp = data.startDate
-                        return record
+                    let healthRecords = healthKitData.compactMap { data in
+                        do {
+                            return try HealthRecord(
+                                type: data.type,
+                                value: data.value,
+                                unit: data.unit,
+                                timestamp: data.startDate,
+                                source: .healthKit
+                            )
+                        } catch {
+                            return nil
+                        }
                     }
                     
                     // 新しいデータがある場合のみハンドラーを呼び出し
@@ -493,6 +495,16 @@ final class HealthKitService {
             return HKUnit.count().unitDivided(by: HKUnit.minute())
         case .bloodGlucose:
             return HKUnit.gramUnit(with: .milli).unitDivided(by: HKUnit.literUnit(with: .deci))
+        case .bloodPressure:
+            return HKUnit.millimeterOfMercury()
+        case .sleep:
+            return HKUnit.hour()
+        case .hydration:
+            return HKUnit.liter()
+        case .exercise:
+            return HKUnit.minute()
+        case .custom:
+            return HKUnit.count() // Default unit for custom types
         }
     }
 }

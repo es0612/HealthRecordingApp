@@ -18,7 +18,7 @@ final class SwiftDataHealthRecordRepository: HealthRecordRepositoryProtocol {
         
         do {
             // Validate record before saving
-            guard record.isValid else {
+            guard record.value >= 0 && !record.unit.isEmpty else {
                 throw ValidationError.invalidInput("HealthRecord", value: "\(record.value)", reason: "Invalid health record data: \(record.type.rawValue) = \(record.value)")
             }
             

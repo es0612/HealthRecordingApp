@@ -211,13 +211,17 @@ enum EnhancedValidationError: UserFriendlyError {
     var message: String {
         switch self {
         case .valueOutOfRange(let value, let range, let dataType, _):
-            return "\(dataType.displayName)の値「\(formatValue(value, for: dataType))」が有効範囲（\(formatValue(range.lowerBound, for: dataType))〜\(formatValue(range.upperBound, for: dataType))）を超えています。"
+            let formattedValue = formatValue(value, for: dataType)
+            let formattedLower = formatValue(range.lowerBound, for: dataType)
+            let formattedUpper = formatValue(range.upperBound, for: dataType)
+            return "\(dataType.displayName)の値「\(formattedValue)」が有効範囲（\(formattedLower)〜\(formattedUpper)）を超えています。"
             
         case .invalidFormat(let input, let expectedFormat, let dataType, _):
             return "\(dataType.displayName)の入力「\(input)」が正しい形式ではありません。\(expectedFormat)の形式で入力してください。"
             
         case .suspiciousValue(let value, let dataType, let reason, _):
-            return "\(dataType.displayName)の値「\(formatValue(value, for: dataType))」について確認してください。\(reason.description)"
+            let formattedValue = formatValue(value, for: dataType)
+            return "\(dataType.displayName)の値「\(formattedValue)」について確認してください。\(reason.description)"
             
         case .timestampInvalid(let timestamp, let reason, _):
             let formatter = DateFormatter()
@@ -245,7 +249,9 @@ enum EnhancedValidationError: UserFriendlyError {
     var suggestion: String? {
         switch self {
         case .valueOutOfRange(_, let range, let dataType, _):
-            return "有効範囲: \(formatValue(range.lowerBound, for: dataType))〜\(formatValue(range.upperBound, for: dataType))"
+            let formattedLower = formatValue(range.lowerBound, for: dataType)
+            let formattedUpper = formatValue(range.upperBound, for: dataType)
+            return "有効範囲: \(formattedLower)〜\(formattedUpper)"
             
         case .invalidFormat(_, let expectedFormat, _, _):
             return "正しい形式: \(expectedFormat)"
@@ -358,6 +364,16 @@ enum EnhancedValidationError: UserFriendlyError {
         case .steps, .calories, .heartRate:
             return String(format: "%.0f", value)
         case .bloodGlucose:
+            return String(format: "%.1f", value)
+        case .bloodPressure:
+            return String(format: "%.0f", value)
+        case .sleep:
+            return String(format: "%.1f", value)
+        case .hydration:
+            return String(format: "%.1f", value)
+        case .exercise:
+            return String(format: "%.0f", value)
+        case .custom:
             return String(format: "%.1f", value)
         }
     }

@@ -537,6 +537,38 @@ final class ManageGoalsUseCase: ManageGoalsUseCaseProtocol {
             let reasoning = "血糖値の安定した管理を目標にしましょう。"
             
             return (target, reasoning, 0.6)
+            
+        case .bloodPressure:
+            let target = currentAverage * 0.95 // Slight improvement
+            let reasoning = "血圧の改善を目指した適度な目標を設定しました。"
+            
+            return (target, reasoning, 0.7)
+            
+        case .sleep:
+            let optimalSleep = 8.0 // 8 hours recommended
+            let target = min(optimalSleep, currentAverage + 0.5) // Gradual improvement
+            let reasoning = "質の良い睡眠時間の確保を目標にしましょう。"
+            
+            return (target, reasoning, 0.8)
+            
+        case .hydration:
+            let recommendedHydration = 2.5 // 2.5L recommended daily
+            let target = min(recommendedHydration, currentAverage * 1.1) // 10% increase
+            let reasoning = "適切な水分摂取量の目標を設定しました。"
+            
+            return (target, reasoning, 0.7)
+            
+        case .exercise:
+            let target = currentAverage + (currentAverage * 0.15) // 15% increase
+            let reasoning = "運動量の段階的な向上を目指した目標です。"
+            
+            return (target, reasoning, 0.8)
+            
+        case .custom:
+            let target = currentAverage * 1.05 // 5% improvement
+            let reasoning = "現在の値から段階的な改善を目指した目標です。"
+            
+            return (target, reasoning, 0.5)
         }
     }
 }

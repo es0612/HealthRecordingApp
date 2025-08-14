@@ -204,6 +204,14 @@ struct StatisticalSummaryCard: View {
             return String(format: "%.1f", value)
         case .steps, .calories, .heartRate:
             return String(format: "%.0f", value)
+        case .bloodPressure:
+            return String(format: "%.0f", value)
+        case .sleep, .hydration:
+            return String(format: "%.1f", value)
+        case .exercise:
+            return String(format: "%.0f", value)
+        case .custom:
+            return String(format: "%.1f", value)
         }
     }
     
@@ -272,6 +280,45 @@ struct StatisticalSummaryCard: View {
             case .stable: return .green
             case .volatile: return .red
             case .increasing, .decreasing: return .orange
+            }
+        case .bloodPressure:
+            // 血圧は減少がポジティブ
+            switch statistics.trendDirection {
+            case .decreasing: return .green
+            case .increasing: return .red
+            case .stable: return .blue
+            case .volatile: return .orange
+            }
+        case .sleep:
+            // 睡眠は増加がポジティブ
+            switch statistics.trendDirection {
+            case .increasing: return .green
+            case .decreasing: return .red
+            case .stable: return .blue
+            case .volatile: return .orange
+            }
+        case .hydration:
+            // 水分摂取は適度な増加がポジティブ
+            switch statistics.trendDirection {
+            case .increasing, .stable: return .green
+            case .decreasing: return .red
+            case .volatile: return .orange
+            }
+        case .exercise:
+            // 運動は増加がポジティブ
+            switch statistics.trendDirection {
+            case .increasing: return .green
+            case .decreasing: return .red
+            case .stable: return .blue
+            case .volatile: return .orange
+            }
+        case .custom:
+            // カスタムはデフォルト動作
+            switch statistics.trendDirection {
+            case .increasing: return .blue
+            case .decreasing: return .orange
+            case .stable: return .green
+            case .volatile: return .red
             }
         }
     }

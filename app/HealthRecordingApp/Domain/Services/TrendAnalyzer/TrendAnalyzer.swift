@@ -538,6 +538,16 @@ final class TrendAnalyzer: TrendAnalyzerProtocol {
                 return record.value < 30 || record.value > 220 // Unreasonable heart rate
             case .bloodGlucose:
                 return record.value < 0 || record.value > 600 // Unreasonable glucose levels
+            case .bloodPressure:
+                return record.value < 50 || record.value > 300 // Unreasonable blood pressure
+            case .sleep:
+                return record.value < 0 || record.value > 24 // Unreasonable sleep hours
+            case .hydration:
+                return record.value < 0 || record.value > 10 // Unreasonable hydration in liters
+            case .exercise:
+                return record.value < 0 || record.value > 1440 // Unreasonable exercise minutes
+            case .custom:
+                return record.value < 0 // Basic validation for custom types
             }
         }
         

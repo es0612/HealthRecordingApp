@@ -101,7 +101,7 @@ public final class ProcessGoalAchievementsUseCase {
         
         do {
             // 特定の目標を取得
-            guard let goal = try await goalRepository.fetchGoal(by: goalId),
+            guard let goal = try await goalRepository.fetchGoal(byId: goalId),
                   goal.isActive else {
                 logger.warning("目標が見つからないか非アクティブ", context: ["goalId": goalId.uuidString])
                 return
@@ -135,8 +135,9 @@ public final class ProcessGoalAchievementsUseCase {
         ])
         
         do {
-            // 該当データタイプの目標を取得
-            let relatedGoals = try await goalRepository.fetchActiveGoals(for: record.type)
+            // 該当データタイプの目標を取得  
+            let allActiveGoals = try await goalRepository.fetchActiveGoals()
+            let relatedGoals = allActiveGoals.filter { $0.type == record.type }
             
             if relatedGoals.isEmpty {
                 logger.debug("該当する目標がありません", context: ["dataType": record.type.rawValue])
@@ -199,13 +200,19 @@ public final class ProcessGoalAchievementsUseCase {
         var allRecords: [HealthRecord] = []
         
         for dataType in dataTypes {
-            let records = try await healthRecordRepository.fetchRecords(
-                type: dataType,
-                from: startDate,
-                to: Date(),
-                limit: nil
-            )
-            allRecords.append(contentsOf: records)
+            // Get all users who have goals for this data type
+            let goalsForType = goals.filter { $0.type == dataType }
+            for goal in goalsForType {
+                if let user = goal.user {
+                    let records = try await healthRecordRepository.fetchRecords(
+                        for: user,
+                        type: dataType,
+                        from: startDate,
+                        to: Date()
+                    )
+                    allRecords.append(contentsOf: records)
+                }
+            }
         }
         
         logger.debug("健康レコード取得", context: [
@@ -300,8 +307,8 @@ public enum GoalAchievementError: Error, LocalizedError {
 
 extension GoalRepositoryProtocol {
     /// データタイプ別のアクティブ目標取得（デフォルト実装）
-    func fetchActiveGoals(for dataType: HealthDataType) async throws -> [Goal] {
-        let allActiveGoals = try await fetchActiveGoals()
+    func fetchActiveGoals(for dataType: HealthDataType, user: User) async throws -> [Goal] {
+        let allActiveGoals = try await fetchGoals(for: user, activeOnly: true)
         return allActiveGoals.filter { $0.type == dataType }
     }
 }

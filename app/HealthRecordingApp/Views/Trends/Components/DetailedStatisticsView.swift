@@ -542,6 +542,14 @@ struct DetailedStatisticsView: View {
             return String(format: "%.1f", value)
         case .steps, .calories, .heartRate:
             return String(format: "%.0f", value)
+        case .bloodPressure:
+            return String(format: "%.0f", value)
+        case .sleep, .hydration:
+            return String(format: "%.1f", value)
+        case .exercise:
+            return String(format: "%.0f", value)
+        case .custom:
+            return String(format: "%.1f", value)
         }
     }
 }
@@ -615,6 +623,14 @@ struct PercentileItemCard: View {
             return String(format: "%.1f", value)
         case .steps, .calories, .heartRate:
             return String(format: "%.0f", value)
+        case .bloodPressure:
+            return String(format: "%.0f", value)
+        case .sleep, .hydration:
+            return String(format: "%.1f", value)
+        case .exercise:
+            return String(format: "%.0f", value)
+        case .custom:
+            return String(format: "%.1f", value)
         }
     }
     

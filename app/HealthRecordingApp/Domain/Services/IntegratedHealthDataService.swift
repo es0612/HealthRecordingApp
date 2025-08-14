@@ -515,6 +515,16 @@ final class IntegratedHealthDataService: IntegratedHealthDataServiceProtocol {
             expectedVariationThreshold = 20 // 20 bpm variation
         case .bloodGlucose:
             expectedVariationThreshold = 30 // 30 mg/dL variation
+        case .bloodPressure:
+            expectedVariationThreshold = 15 // 15 mmHg variation
+        case .sleep:
+            expectedVariationThreshold = 2.0 // 2 hour variation
+        case .hydration:
+            expectedVariationThreshold = 1.0 // 1L variation
+        case .exercise:
+            expectedVariationThreshold = 60 // 60 minutes variation
+        case .custom:
+            expectedVariationThreshold = 10.0 // Generic variation for custom types
         }
         
         // Calculate consistency score based on standard deviation vs expected variation

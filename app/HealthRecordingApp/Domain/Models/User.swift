@@ -2,19 +2,19 @@ import SwiftData
 import Foundation
 
 @Model
-final class User {
-    var id: UUID
-    var name: String
-    var age: Int
-    var height: Double
-    var targetWeight: Double
-    var createdAt: Date
+public final class User {
+    public var id: UUID
+    public var name: String
+    public var age: Int
+    public var height: Double
+    public var targetWeight: Double
+    public var createdAt: Date
     
     // Relationships
-    @Relationship(deleteRule: .cascade) var healthRecords: [HealthRecord] = []
-    @Relationship(deleteRule: .cascade) var goals: [Goal] = []
+    @Relationship(deleteRule: .cascade) public var healthRecords: [HealthRecord] = []
+    @Relationship(deleteRule: .cascade) public var goals: [Goal] = []
     
-    init(name: String, age: Int, height: Double, targetWeight: Double) throws {
+    public init(name: String, age: Int, height: Double, targetWeight: Double) throws {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ValidationError.invalidInput("User", value: name, reason: "User name cannot be empty")
         }
@@ -37,18 +37,18 @@ final class User {
     }
     
     /// ターゲット体重に基づくBMI計算
-    var targetBMI: Double {
+    public var targetBMI: Double {
         let heightInMeters = height / 100.0
         return targetWeight / (heightInMeters * heightInMeters)
     }
     
     /// 年齢が有効範囲内かチェック
-    var isValidAge: Bool {
+    public var isValidAge: Bool {
         return age >= 10 && age <= 120
     }
     
     /// BMIカテゴリの判定
-    var bmiCategory: BMICategory {
+    public var bmiCategory: BMICategory {
         switch targetBMI {
         case ..<18.5:
             return .underweight
@@ -62,7 +62,7 @@ final class User {
     }
     
     /// ユーザーの現在の体重を取得（最新のHealthRecordから）
-    var currentWeight: Double? {
+    public var currentWeight: Double? {
         return healthRecords
             .filter { $0.type == .weight }
             .sorted { $0.timestamp > $1.timestamp }
@@ -70,7 +70,7 @@ final class User {
     }
 }
 
-enum BMICategory: String, CaseIterable {
+public enum BMICategory: String, CaseIterable {
     case underweight = "低体重"
     case normal = "普通体重" 
     case overweight = "肥満(1度)"

@@ -2,22 +2,27 @@ import SwiftData
 import Foundation
 
 @Model
-final class Goal {
-    var id: UUID
+public final class Goal {
+    public var id: UUID
     var type: HealthDataType
     var targetValue: Double
     var currentValue: Double
     var deadline: Date
     var isActive: Bool
-    var isCompleted: Bool
     var goalDescription: String?
+    
+    // Computed property for completion status
+    @Transient
+    var isCompleted: Bool {
+        return currentValue >= targetValue
+    }
     var createdAt: Date
     var updatedAt: Date
     
     // Relationships
     var user: User?
     
-    init(
+    public init(
         type: HealthDataType,
         targetValue: Double,
         deadline: Date,
@@ -38,7 +43,6 @@ final class Goal {
         self.currentValue = 0.0
         self.deadline = deadline
         self.isActive = isActive
-        self.isCompleted = false
         self.goalDescription = goalDescription
         self.createdAt = Date()
         self.updatedAt = Date()
@@ -98,13 +102,38 @@ final class Goal {
             if let latestRecord = relevantRecords.max(by: { $0.timestamp < $1.timestamp }) {
                 currentValue = latestRecord.value
             }
+        case .bloodPressure:
+            // For blood pressure, use latest reading
+            if let latestRecord = relevantRecords.max(by: { $0.timestamp < $1.timestamp }) {
+                currentValue = latestRecord.value
+            }
+        case .sleep:
+            // For sleep, sum daily sleep hours
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let recentRecords = relevantRecords.filter { calendar.startOfDay(for: $0.timestamp) >= today }
+            currentValue = recentRecords.reduce(0) { $0 + $1.value }
+        case .hydration:
+            // For hydration, sum daily water intake
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let recentRecords = relevantRecords.filter { calendar.startOfDay(for: $0.timestamp) >= today }
+            currentValue = recentRecords.reduce(0) { $0 + $1.value }
+        case .exercise:
+            // For exercise, sum daily exercise minutes
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let recentRecords = relevantRecords.filter { calendar.startOfDay(for: $0.timestamp) >= today }
+            currentValue = recentRecords.reduce(0) { $0 + $1.value }
+        case .custom:
+            // For custom goals, use latest value
+            if let latestRecord = relevantRecords.max(by: { $0.timestamp < $1.timestamp }) {
+                currentValue = latestRecord.value
+            }
         }
         
-        // Check if goal is completed
-        if currentValue >= targetValue && !isCompleted {
-            isCompleted = true
-            updatedAt = Date()
-        }
+        // Update timestamp when goal changes
+        updatedAt = Date()
     }
     
     func deactivate() {
@@ -118,7 +147,8 @@ final class Goal {
     }
     
     func complete() {
-        isCompleted = true
+        // Goal completion is now automatically determined by currentValue >= targetValue
+        // Just update the timestamp
         updatedAt = Date()
     }
     
@@ -131,7 +161,7 @@ final class Goal {
 // MARK: - Goal Suggestion
 
 struct GoalSuggestion: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     let type: HealthDataType
     let suggestedTargetValue: Double
     let suggestedDeadline: Date
@@ -157,6 +187,7 @@ struct GoalSuggestion: Identifiable, Codable {
         estimatedDifficulty: GoalDifficulty = .moderate,
         priority: GoalPriority = .medium
     ) {
+        self.id = UUID()
         self.type = type
         self.suggestedTargetValue = suggestedTargetValue
         self.suggestedDeadline = suggestedDeadline

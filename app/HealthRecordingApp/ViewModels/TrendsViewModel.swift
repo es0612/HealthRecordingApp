@@ -678,7 +678,7 @@ enum PerformanceTrend: String, CaseIterable {
     }
 }
 
-struct ChartDataPoint: Identifiable {
+struct ChartDataPoint: Identifiable, Equatable {
     let id = UUID()
     let date: Date
     let value: Double
@@ -698,6 +698,14 @@ struct ChartDataPoint: Identifiable {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         return formatter.string(from: date)
+    }
+    
+    // Equatable implementation
+    static func == (lhs: ChartDataPoint, rhs: ChartDataPoint) -> Bool {
+        return lhs.date == rhs.date &&
+               lhs.value == rhs.value &&
+               lhs.movingAverage == rhs.movingAverage &&
+               lhs.isSelected == rhs.isSelected
     }
 }
 

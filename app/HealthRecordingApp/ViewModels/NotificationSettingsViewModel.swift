@@ -4,6 +4,7 @@ import SwiftUI
 import UIKit
 #endif
 
+
 /// 通知設定画面のViewModel
 /// 通知権限、設定の管理と永続化を担当
 @MainActor
@@ -130,14 +131,13 @@ final class NotificationSettingsViewModel {
         
         do {
             // 対応する設定を取得または作成
-            let currentSettings = await notificationManager.notificationService.getNotificationSettings(for: type)
+            let currentSettings = await notificationManager.getNotificationSettings(for: type)
             
             let updatedSettings = NotificationSettings(
                 type: type,
                 isEnabled: enabled,
-                scheduledTimes: currentSettings?.scheduledTimes ?? getDefaultTimes(for: type),
-                frequency: currentSettings?.frequency ?? .daily,
-                customMessage: currentSettings?.customMessage
+                scheduledTimes: currentSettings.scheduledTimes.isEmpty ? getDefaultTimes(for: type) : currentSettings.scheduledTimes,
+                frequency: currentSettings.frequency
             )
             
             try await notificationManager.updateNotificationSetting(updatedSettings)
@@ -340,11 +340,11 @@ final class NotificationSettingsViewModel {
     // MARK: - Private Methods
     
     private func updateAuthorizationStatus() async {
-        authorizationStatus = await notificationManager.notificationService.getAuthorizationStatus()
+        authorizationStatus = await notificationManager.getAuthorizationStatus()
     }
     
     private func loadCurrentSettings() async {
-        let settings = await notificationManager.notificationService.getNotificationSettings()
+        let settings = await notificationManager.getNotificationSettings()
         
         for setting in settings {
             await updateUIState(for: setting.type, enabled: setting.isEnabled)

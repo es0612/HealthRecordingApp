@@ -65,7 +65,7 @@ final class RecordHealthDataUseCase: RecordHealthDataUseCaseProtocol {
             
             for data in healthKitData {
                 do {
-                    let healthRecord = HealthRecord(
+                    let healthRecord = try HealthRecord(
                         type: data.type,
                         value: data.value,
                         unit: data.unit,
@@ -136,7 +136,7 @@ final class RecordHealthDataUseCase: RecordHealthDataUseCaseProtocol {
             try validateManualData(data)
             
             // Create HealthRecord from manual data
-            let healthRecord = HealthRecord(
+            let healthRecord = try HealthRecord(
                 type: data.type,
                 value: data.value,
                 unit: data.unit,
@@ -382,6 +382,51 @@ final class RecordHealthDataUseCase: RecordHealthDataUseCaseProtocol {
                     reason: "Blood glucose must be between 0 and 500 mg/dL"
                 )
             }
+            
+        case .bloodPressure:
+            guard data.value > 0 && data.value <= 300 else {
+                throw ValidationError.invalidInput(
+                    "ManualHealthData",
+                    value: "\(data.value)",
+                    reason: "Blood pressure must be between 0 and 300 mmHg"
+                )
+            }
+            
+        case .sleep:
+            guard data.value >= 0 && data.value <= 24 else {
+                throw ValidationError.invalidInput(
+                    "ManualHealthData",
+                    value: "\(data.value)",
+                    reason: "Sleep duration must be between 0 and 24 hours"
+                )
+            }
+            
+        case .hydration:
+            guard data.value >= 0 && data.value <= 10 else {
+                throw ValidationError.invalidInput(
+                    "ManualHealthData",
+                    value: "\(data.value)",
+                    reason: "Hydration must be between 0 and 10 liters"
+                )
+            }
+            
+        case .exercise:
+            guard data.value >= 0 && data.value <= 1440 else {
+                throw ValidationError.invalidInput(
+                    "ManualHealthData",
+                    value: "\(data.value)",
+                    reason: "Exercise duration must be between 0 and 1440 minutes"
+                )
+            }
+            
+        case .custom:
+            guard data.value >= 0 else {
+                throw ValidationError.invalidInput(
+                    "ManualHealthData",
+                    value: "\(data.value)",
+                    reason: "Custom value must be positive"
+                )
+            }
         }
         
         // Validate timestamp is not in the future
@@ -416,6 +461,16 @@ final class RecordHealthDataUseCase: RecordHealthDataUseCaseProtocol {
             return ["bpm", "beats/min"].contains(unit.lowercased())
         case .bloodGlucose:
             return ["mg/dl", "mg/l", "mmol/l"].contains(unit.lowercased())
+        case .bloodPressure:
+            return ["mmhg", "mm hg", "kpa"].contains(unit.lowercased())
+        case .sleep:
+            return ["hours", "hrs", "h", "minutes", "mins", "m"].contains(unit.lowercased())
+        case .hydration:
+            return ["l", "liters", "ml", "milliliters", "oz", "cups"].contains(unit.lowercased())
+        case .exercise:
+            return ["minutes", "mins", "m", "hours", "hrs", "h"].contains(unit.lowercased())
+        case .custom:
+            return true // Allow any unit for custom types
         }
     }
 }

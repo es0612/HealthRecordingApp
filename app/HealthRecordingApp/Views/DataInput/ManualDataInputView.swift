@@ -330,6 +330,16 @@ struct ManualDataInputView: View {
             return "70"
         case .bloodGlucose:
             return "100"
+        case .bloodPressure:
+            return "120"
+        case .sleep:
+            return "8.0"
+        case .hydration:
+            return "2.5"
+        case .exercise:
+            return "60"
+        case .custom:
+            return "50"
         }
     }
     
@@ -345,6 +355,16 @@ struct ManualDataInputView: View {
             return "30〜200bpmの範囲で入力してください"
         case .bloodGlucose:
             return "20〜600mg/dLの範囲で入力してください"
+        case .bloodPressure:
+            return "70〜200mmHgの範囲で入力してください"
+        case .sleep:
+            return "2〜16時間の範囲で入力してください"
+        case .hydration:
+            return "0.5〜10.0Lの範囲で入力してください"
+        case .exercise:
+            return "5〜600分の範囲で入力してください"
+        case .custom:
+            return "適切な範囲で入力してください"
         }
     }
     
@@ -371,6 +391,16 @@ struct ManualDataInputView: View {
             return [60, 70, 80, 90, 100, 120]
         case .bloodGlucose:
             return [80, 90, 100, 110, 120, 140]
+        case .bloodPressure:
+            return [90, 100, 110, 120, 130, 140]
+        case .sleep:
+            return [6.0, 7.0, 7.5, 8.0, 8.5, 9.0]
+        case .hydration:
+            return [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+        case .exercise:
+            return [30, 45, 60, 90, 120, 180]
+        case .custom:
+            return [10, 25, 50, 100, 200, 500]
         }
     }
     
@@ -677,6 +707,16 @@ struct ManualDataInputView: View {
             return 60...100
         case .bloodGlucose:
             return 70...140
+        case .bloodPressure:
+            return 90...180
+        case .sleep:
+            return 4...12
+        case .hydration:
+            return 1...5
+        case .exercise:
+            return 10...300
+        case .custom:
+            return 0...1000
         }
     }
     
@@ -1554,6 +1594,16 @@ struct ManualDataInputView: View {
             return [75, 68, 82, 71, 77]
         case .bloodGlucose:
             return [95, 102, 88, 96, 101]
+        case .bloodPressure:
+            return [120, 118, 125, 115, 122]
+        case .sleep:
+            return [7.5, 8.0, 7.2, 8.5, 7.8]
+        case .hydration:
+            return [2.5, 2.2, 2.8, 2.4, 2.6]
+        case .exercise:
+            return [45, 60, 30, 75, 50]
+        case .custom:
+            return [100, 95, 105, 98, 102]
         }
     }
     
@@ -1587,6 +1637,16 @@ struct ManualDataInputView: View {
         case .heartRate:
             suggestions.append(contentsOf: [recent - 5, recent + 5])
         case .bloodGlucose:
+            suggestions.append(contentsOf: [recent - 10, recent + 10])
+        case .bloodPressure:
+            suggestions.append(contentsOf: [recent - 5, recent + 5])
+        case .sleep:
+            suggestions.append(contentsOf: [recent - 0.5, recent + 0.5])
+        case .hydration:
+            suggestions.append(contentsOf: [recent - 0.2, recent + 0.2])
+        case .exercise:
+            suggestions.append(contentsOf: [recent - 15, recent + 15])
+        case .custom:
             suggestions.append(contentsOf: [recent - 10, recent + 10])
         }
         
@@ -1786,6 +1846,16 @@ struct PresetValuesGrid: View {
             return [60, 65, 70, 75, 80, 85, 90, 95]
         case .bloodGlucose:
             return [80, 90, 95, 100, 110, 120, 140]
+        case .bloodPressure:
+            return [90, 100, 110, 120, 130, 140, 150]
+        case .sleep:
+            return [6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0]
+        case .hydration:
+            return [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+        case .exercise:
+            return [15, 30, 45, 60, 90, 120]
+        case .custom:
+            return [10, 20, 50, 100, 200, 500]
         }
     }
     

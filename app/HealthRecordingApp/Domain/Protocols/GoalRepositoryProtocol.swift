@@ -2,7 +2,7 @@ import Foundation
 
 /// Repository protocol for Goal data access operations
 /// Provides abstraction layer between Use Cases and Infrastructure
-protocol GoalRepositoryProtocol {
+public protocol GoalRepositoryProtocol {
     
     /// Save a goal to persistent storage
     /// - Parameter goal: The Goal to save
@@ -52,4 +52,9 @@ protocol GoalRepositoryProtocol {
     /// - Parameter goal: The Goal to update progress for
     /// - Throws: HealthAppError if update operation fails
     func updateProgress(_ goal: Goal) async throws
+    
+    /// Fetch all active goals across all users
+    /// - Returns: Array of all active goals in the system
+    /// - Throws: HealthAppError if fetch operation fails  
+    func fetchActiveGoals() async throws -> [Goal]
 }

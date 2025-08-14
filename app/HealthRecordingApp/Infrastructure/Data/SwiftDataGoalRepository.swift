@@ -321,4 +321,38 @@ final class SwiftDataGoalRepository: GoalRepositoryProtocol {
             throw DataError.swiftDataOperationFailed(error)
         }
     }
+    
+    func fetchActiveGoals() async throws -> [Goal] {
+        let startTime = Date()
+        
+        do {
+            let descriptor = FetchDescriptor<Goal>(
+                predicate: #Predicate<Goal> { goal in
+                    goal.isActive == true
+                }
+            )
+            
+            let goals = try modelContext.fetch(descriptor)
+            
+            let duration = Date().timeIntervalSince(startTime)
+            logger.logPerformance("fetch_active_goals", duration: duration, success: true)
+            
+            logger.info("Active goals fetched successfully", context: [
+                "goals_count": goals.count,
+                "operation": "fetch_all_active_goals"
+            ])
+            
+            return goals
+            
+        } catch {
+            let duration = Date().timeIntervalSince(startTime)
+            logger.logPerformance("fetch_active_goals", duration: duration, success: false)
+            
+            logger.error(error, context: [
+                "operation": "fetch_all_active_goals"
+            ])
+            
+            throw DataError.swiftDataOperationFailed(error)
+        }
+    }
 }

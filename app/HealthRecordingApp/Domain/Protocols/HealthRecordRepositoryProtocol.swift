@@ -2,7 +2,7 @@ import Foundation
 
 /// Repository protocol for HealthRecord data access operations
 /// Provides abstraction layer between Use Cases and Infrastructure
-protocol HealthRecordRepositoryProtocol {
+public protocol HealthRecordRepositoryProtocol {
     
     /// Save a health record to persistent storage
     /// - Parameter record: The HealthRecord to save

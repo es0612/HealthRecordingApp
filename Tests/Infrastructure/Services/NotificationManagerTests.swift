@@ -581,20 +581,7 @@ enum MockNotificationServiceError: Error {
 }
 
 // MARK: - Missing Model Definitions for Testing
-
-extension HealthAlertSeverity: CaseIterable {
-    public static var allCases: [HealthAlertSeverity] {
-        return [.low, .normal, .high, .critical]
-    }
-}
-
-// 一時的なHealthAlertSeverity定義（実装待ち）
-enum HealthAlertSeverity: String, CaseIterable {
-    case low = "low"
-    case normal = "normal" 
-    case high = "high"
-    case critical = "critical"
-}
+// HealthAlertSeverityはNotificationManagerで定義済み
 
 // 一時的なNotificationEffectivenessReport定義（実装待ち）
 struct NotificationEffectivenessReport {

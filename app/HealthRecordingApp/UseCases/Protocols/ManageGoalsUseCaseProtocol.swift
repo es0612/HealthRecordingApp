@@ -344,6 +344,16 @@ enum GoalCategory: String, CaseIterable {
             return .performance
         case .bloodGlucose:
             return .health
+        case .bloodPressure:
+            return .health
+        case .sleep:
+            return .health
+        case .hydration:
+            return .health
+        case .exercise:
+            return .fitness
+        case .custom:
+            return .health
         }
     }
 }

@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import SwiftUI
 
 // MARK: - 通知タイプとモデル定義
 
@@ -40,6 +41,80 @@ public enum AppNotificationType: String, CaseIterable, Codable {
             return false
         case .healthAlert:
             return true
+        }
+    }
+    
+    /// 詳細説明
+    var description: String {
+        switch self {
+        case .dataReminder:
+            return "健康データの記録を思い出させる通知"
+        case .goalAchievement:
+            return "目標達成時のお祝い通知"
+        case .streakMilestone:
+            return "継続記録の節目での通知"
+        case .healthAlert:
+            return "健康状態に関する重要な通知"
+        case .weeklyInsight:
+            return "週次の健康データ分析結果"
+        }
+    }
+    
+    /// アイコン名
+    var iconName: String {
+        switch self {
+        case .dataReminder:
+            return "bell.badge"
+        case .goalAchievement:
+            return "trophy"
+        case .streakMilestone:
+            return "flame"
+        case .healthAlert:
+            return "exclamationmark.triangle"
+        case .weeklyInsight:
+            return "chart.line.uptrend.xyaxis"
+        }
+    }
+    
+    /// テーマカラー
+    var color: Color {
+        switch self {
+        case .dataReminder:
+            return .blue
+        case .goalAchievement:
+            return .green
+        case .streakMilestone:
+            return .orange
+        case .healthAlert:
+            return .red
+        case .weeklyInsight:
+            return .purple
+        }
+    }
+}
+
+/// 健康アラートの重要度
+public enum HealthAlertSeverity: String, CaseIterable, Codable {
+    case low = "low"
+    case normal = "normal"
+    case high = "high"
+    case critical = "critical"
+    
+    var displayName: String {
+        switch self {
+        case .low: return "低"
+        case .normal: return "通常"
+        case .high: return "高"
+        case .critical: return "緊急"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .low: return .green
+        case .normal: return .blue
+        case .high: return .orange
+        case .critical: return .red
         }
     }
 }

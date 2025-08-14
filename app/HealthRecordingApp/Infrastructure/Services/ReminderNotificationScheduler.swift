@@ -246,11 +246,41 @@ private extension ReminderNotificationScheduler {
                 calendar.date(bySettingHour: 11, minute: 30, second: 0, of: now) ?? now, // 昼食前
                 calendar.date(bySettingHour: 18, minute: 30, second: 0, of: now) ?? now  // 夕食前
             ]
+            
+        case .bloodPressure:
+            // 血圧は朝と夜
+            return [
+                calendar.date(bySettingHour: 7, minute: 0, second: 0, of: now) ?? now,   // 朝7:00
+                calendar.date(bySettingHour: 21, minute: 30, second: 0, of: now) ?? now  // 夜9:30
+            ]
+            
+        case .sleep:
+            // 睡眠は就寝前
+            return [calendar.date(bySettingHour: 22, minute: 30, second: 0, of: now) ?? now]  // 夜10:30
+            
+        case .hydration:
+            // 水分摂取は定期的に
+            return [
+                calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now) ?? now,   // 朝9:00
+                calendar.date(bySettingHour: 15, minute: 0, second: 0, of: now) ?? now,  // 午後3:00
+                calendar.date(bySettingHour: 18, minute: 0, second: 0, of: now) ?? now   // 夕方6:00
+            ]
+            
+        case .exercise:
+            // 運動は朝または夕方
+            return [
+                calendar.date(bySettingHour: 6, minute: 30, second: 0, of: now) ?? now,  // 朝6:30
+                calendar.date(bySettingHour: 18, minute: 30, second: 0, of: now) ?? now  // 夕方6:30
+            ]
+            
+        case .custom:
+            // カスタムタイプはデフォルトで朝
+            return [calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now) ?? now]
         }
     }
     
     /// ユーザー習慣を取得
-    func getUserHabits() async -> [UserHabit] {
+    private func getUserHabits() async -> [UserHabit] {
         // TODO: 実際の実装では、UserDefaultsまたはSwiftDataから取得
         return HealthDataType.allCases.map { dataType in
             UserHabit(
@@ -263,7 +293,7 @@ private extension ReminderNotificationScheduler {
     }
     
     /// ユーザー習慣を更新
-    func updateUserHabit(
+    private func updateUserHabit(
         dataType: HealthDataType,
         preferredTimes: [Date],
         frequency: NotificationScheduleFrequency,
@@ -277,7 +307,7 @@ private extension ReminderNotificationScheduler {
     }
     
     /// 最適なリマインダー時間を計算
-    func calculateOptimalReminderTimes(for habit: UserHabit) async -> [Date] {
+    private func calculateOptimalReminderTimes(for habit: UserHabit) async -> [Date] {
         // 機械学習的アプローチ（簡易版）
         let historicalSuccessRates = await getHistoricalSuccessRates(for: habit.dataType)
         let optimalTimes = habit.preferredTimes.filter { time in
@@ -303,11 +333,21 @@ private extension ReminderNotificationScheduler {
             return [8: 0.7, 22: 0.8]  // 朝と夜が高い成功率
         case .bloodGlucose:
             return [7: 0.9, 11: 0.8, 18: 0.8]  // 食前が高い成功率
+        case .bloodPressure:
+            return [7: 0.8, 21: 0.9]  // 朝と夜が高い成功率
+        case .sleep:
+            return [22: 0.9, 23: 0.7]  // 就寝前が高い成功率
+        case .hydration:
+            return [9: 0.7, 15: 0.8, 18: 0.6]  // 定期的な水分補給
+        case .exercise:
+            return [6: 0.8, 18: 0.9]  // 朝と夕方が高い成功率
+        case .custom:
+            return [8: 0.7]  // デフォルト時間
         }
     }
     
     /// パーソナライズドリマインダーコンテンツを作成
-    func createPersonalizedReminderContent(for habit: UserHabit) -> NotificationContent {
+    private func createPersonalizedReminderContent(for habit: UserHabit) -> NotificationContent {
         let streak = habit.streakDays
         let dataType = habit.dataType
         
@@ -376,7 +416,7 @@ private extension ReminderNotificationScheduler {
     }
     
     /// パーソナライズドリマインダーをスケジュール
-    func schedulePersonalizedReminder(
+    private func schedulePersonalizedReminder(
         habit: UserHabit,
         times: [Date],
         content: NotificationContent
@@ -398,14 +438,14 @@ private extension ReminderNotificationScheduler {
     }
     
     /// リマインダー頻度を増やす
-    func increasReminderFrequency(for habit: UserHabit) async -> [Date] {
+    private func increasReminderFrequency(for habit: UserHabit) async -> [Date] {
         let currentTimes = habit.preferredTimes
         let additionalTimes = getAdditionalReminderTimes(for: habit.dataType)
         return currentTimes + additionalTimes
     }
     
     /// リマインダー頻度を減らす
-    func decreaseReminderFrequency(for habit: UserHabit) async -> [Date] {
+    private func decreaseReminderFrequency(for habit: UserHabit) async -> [Date] {
         let currentTimes = habit.preferredTimes
         return currentTimes.count > 1 ? Array(currentTimes.dropLast()) : currentTimes
     }
@@ -426,6 +466,16 @@ private extension ReminderNotificationScheduler {
             return [calendar.date(bySettingHour: 15, minute: 0, second: 0, of: now) ?? now]
         case .bloodGlucose:
             return [calendar.date(bySettingHour: 14, minute: 0, second: 0, of: now) ?? now]
+        case .bloodPressure:
+            return [calendar.date(bySettingHour: 13, minute: 0, second: 0, of: now) ?? now]
+        case .sleep:
+            return [calendar.date(bySettingHour: 21, minute: 0, second: 0, of: now) ?? now]
+        case .hydration:
+            return [calendar.date(bySettingHour: 12, minute: 0, second: 0, of: now) ?? now]
+        case .exercise:
+            return [calendar.date(bySettingHour: 16, minute: 30, second: 0, of: now) ?? now]
+        case .custom:
+            return [calendar.date(bySettingHour: 15, minute: 30, second: 0, of: now) ?? now]
         }
     }
 }
@@ -467,9 +517,3 @@ public enum ReminderCondition: String, CaseIterable {
 }
 
 // MARK: - Extensions
-
-private extension Date {
-    var ISO8601String: String {
-        return ISO8601DateFormatter().string(from: self)
-    }
-}

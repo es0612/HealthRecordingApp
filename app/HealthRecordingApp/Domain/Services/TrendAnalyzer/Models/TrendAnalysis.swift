@@ -149,15 +149,21 @@ struct TrendPrediction: Codable {
 enum TrendTimeRange: String, CaseIterable, Codable {
     case week = "week"
     case month = "month"
+    case threeMonths = "three_months"
+    case sixMonths = "six_months"
     case quarter = "quarter"
     case year = "year"
+    case custom = "custom"
     
     var displayName: String {
         switch self {
         case .week: return "週間"
         case .month: return "月間"
+        case .threeMonths: return "3ヶ月"
+        case .sixMonths: return "6ヶ月"
         case .quarter: return "四半期"
         case .year: return "年間"
+        case .custom: return "カスタム"
         }
     }
     
@@ -165,8 +171,11 @@ enum TrendTimeRange: String, CaseIterable, Codable {
         switch self {
         case .week: return 7
         case .month: return 30
+        case .threeMonths: return 90
+        case .sixMonths: return 180
         case .quarter: return 90
         case .year: return 365
+        case .custom: return 30 // Default for custom
         }
     }
     
@@ -174,8 +183,11 @@ enum TrendTimeRange: String, CaseIterable, Codable {
         switch self {
         case .week: return 3
         case .month: return 7
+        case .threeMonths: return 14
+        case .sixMonths: return 21
         case .quarter: return 14
         case .year: return 30
+        case .custom: return 7 // Default for custom
         }
     }
 }

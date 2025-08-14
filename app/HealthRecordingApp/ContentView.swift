@@ -77,7 +77,7 @@ struct ContentView: View {
             let healthKitService = HealthKitService()
             let trendAnalyzer = TrendAnalyzer(logger: logger)
             let goalTracker = GoalTracker()
-            let insightEngine = InsightEngine()
+            let _ = InsightEngine() // InsightEngine initialization for future use
             
             // Initialize use cases
             let recordHealthDataUseCase = RecordHealthDataUseCase(
@@ -244,11 +244,11 @@ private func addSampleData(to context: ModelContext) {
         
         // Create sample health records
         let sampleRecords = [
-            HealthRecord(type: .weight, value: 72.5, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 72.0, unit: "kg", source: .healthKit),
-            HealthRecord(type: .weight, value: 71.8, unit: "kg", source: .healthKit),
-            HealthRecord(type: .steps, value: 8500, unit: "count", source: .healthKit),  
-            HealthRecord(type: .calories, value: 2200, unit: "kcal", source: .healthKit)
+            try HealthRecord(type: .weight, value: 72.5, unit: "kg", source: .healthKit),
+            try HealthRecord(type: .weight, value: 72.0, unit: "kg", source: .healthKit),
+            try HealthRecord(type: .weight, value: 71.8, unit: "kg", source: .healthKit),
+            try HealthRecord(type: .steps, value: 8500, unit: "count", source: .healthKit),  
+            try HealthRecord(type: .calories, value: 2200, unit: "kcal", source: .healthKit)
         ]
         
         for record in sampleRecords {
