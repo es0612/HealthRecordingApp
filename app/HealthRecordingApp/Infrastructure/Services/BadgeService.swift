@@ -327,9 +327,184 @@ private extension BadgeService {
     
     /// Check special badge conditions
     func checkSpecialCondition(for user: User) async throws -> Bool {
-        // Special badges require custom logic
-        // For now, return false - this should be implemented based on specific requirements
+        // Get user's health records for analysis
+        let userRecords = try await healthRecordRepository.fetchRecords(
+            for: user,
+            type: nil,
+            from: nil,
+            to: nil
+        )
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) ?? now
+        let recentRecords = userRecords.filter { $0.timestamp >= thirtyDaysAgo }
+        
+        // Special condition 1: Perfect Week (7 consecutive days with all data types)
+        if checkPerfectWeek(records: recentRecords) {
+            return true
+        }
+        
+        // Special condition 2: Health Diversity (recorded 5+ different data types in a week)
+        if checkHealthDiversity(records: recentRecords) {
+            return true
+        }
+        
+        // Special condition 3: Early Bird (recorded data before 8 AM for 5 consecutive days)
+        if checkEarlyBird(records: recentRecords) {
+            return true
+        }
+        
+        // Special condition 4: Weekend Warrior (consistent weekend recording for 4 weeks)
+        if checkWeekendWarrior(records: userRecords) {
+            return true
+        }
+        
+        // Special condition 5: Improvement Streak (showing improvement for 14 consecutive days)
+        if try await checkImprovementStreak(records: recentRecords, for: user) {
+            return true
+        }
+        
         return false
+    }
+    
+    private func checkPerfectWeek(records: [HealthRecord]) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Check last 7 days
+        for dayOffset in 0..<7 {
+            guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: now) else { continue }
+            let dayStart = calendar.startOfDay(for: day)
+            let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+            
+            let dayRecords = records.filter { record in
+                record.timestamp >= dayStart && record.timestamp < dayEnd
+            }
+            
+            let recordedTypes = Set(dayRecords.map { $0.type })
+            // Perfect day requires at least 3 different data types
+            if recordedTypes.count < 3 {
+                return false
+            }
+        }
+        
+        return true
+    }
+    
+    private func checkHealthDiversity(records: [HealthRecord]) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now) ?? now
+        
+        let weekRecords = records.filter { $0.timestamp >= oneWeekAgo }
+        let uniqueTypes = Set(weekRecords.map { $0.type })
+        
+        return uniqueTypes.count >= 5
+    }
+    
+    private func checkEarlyBird(records: [HealthRecord]) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        var consecutiveDays = 0
+        
+        for dayOffset in 0..<14 { // Check last 14 days for 5 consecutive
+            guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: now) else { continue }
+            let dayStart = calendar.startOfDay(for: day)
+            let morningEnd = calendar.date(byAdding: .hour, value: 8, to: dayStart) ?? dayStart
+            
+            let morningRecords = records.filter { record in
+                record.timestamp >= dayStart && record.timestamp <= morningEnd
+            }
+            
+            if !morningRecords.isEmpty {
+                consecutiveDays += 1
+                if consecutiveDays >= 5 {
+                    return true
+                }
+            } else {
+                consecutiveDays = 0
+            }
+        }
+        
+        return false
+    }
+    
+    private func checkWeekendWarrior(records: [HealthRecord]) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        var weekendStreaks = 0
+        
+        // Check last 8 weeks for 4 consecutive weekend recordings
+        for weekOffset in 0..<8 {
+            guard let week = calendar.date(byAdding: .weekOfYear, value: -weekOffset, to: now) else { continue }
+            
+            // Get Saturday and Sunday of this week
+            let weekdays = (1...7).compactMap { dayOffset in
+                calendar.date(byAdding: .day, value: dayOffset - calendar.component(.weekday, from: week), to: week)
+            }
+            
+            guard weekdays.count >= 7 else { continue }
+            let saturday = weekdays[5] // Saturday (index 5 for Saturday)
+            let sunday = weekdays[6]   // Sunday (index 6 for Sunday)
+            
+            let weekendRecords = records.filter { record in
+                let day = calendar.startOfDay(for: record.timestamp)
+                return day == calendar.startOfDay(for: saturday) || day == calendar.startOfDay(for: sunday)
+            }
+            
+            if !weekendRecords.isEmpty {
+                weekendStreaks += 1
+                if weekendStreaks >= 4 {
+                    return true
+                }
+            } else {
+                weekendStreaks = 0
+            }
+        }
+        
+        return false
+    }
+    
+    private func checkImprovementStreak(records: [HealthRecord], for user: User) async throws -> Bool {
+        // Focus on weight improvement for this special condition
+        let weightRecords = records.filter { $0.type == .weight }
+            .sorted { $0.timestamp < $1.timestamp }
+        
+        guard weightRecords.count >= 14 else { return false }
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        var improvementDays = 0
+        var lastWeight: Double?
+        
+        // Check last 14 days for consistent improvement
+        for dayOffset in 0..<14 {
+            guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: now) else { continue }
+            let dayStart = calendar.startOfDay(for: day)
+            let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+            
+            let dayWeightRecords = weightRecords.filter { record in
+                record.timestamp >= dayStart && record.timestamp < dayEnd
+            }
+            
+            if let currentWeight = dayWeightRecords.last?.value {
+                if let previous = lastWeight {
+                    // Improvement means weight is decreasing (assuming weight loss goal)
+                    if currentWeight <= previous {
+                        improvementDays += 1
+                    } else {
+                        improvementDays = 0
+                    }
+                }
+                lastWeight = currentWeight
+            }
+        }
+        
+        return improvementDays >= 14
     }
     
     /// Get default badge definitions
@@ -402,6 +577,84 @@ private extension BadgeService {
                 type: .achievement,
                 requirement: .special,
                 iconName: "heart.fill",
+                colorScheme: .platinum
+            ),
+            
+            // Enhanced Special Badges
+            BadgeDefinition(
+                name: "パーフェクトウィーク",
+                description: "7日間連続で多様な健康データを記録",
+                type: .special,
+                requirement: .special,
+                iconName: "star.circle.fill",
+                colorScheme: .gold
+            ),
+            BadgeDefinition(
+                name: "データマニア",
+                description: "1週間で5種類以上のデータを記録",
+                type: .special,
+                requirement: .special,
+                iconName: "chart.bar.fill",
+                colorScheme: .silver
+            ),
+            BadgeDefinition(
+                name: "早起きの鳥",
+                description: "5日連続で朝8時前にデータを記録",
+                type: .special,
+                requirement: .special,
+                iconName: "sunrise.fill",
+                colorScheme: .gold
+            ),
+            BadgeDefinition(
+                name: "ウィークエンドウォリアー",
+                description: "4週連続で週末にデータを記録",
+                type: .special,
+                requirement: .special,
+                iconName: "calendar.badge.plus",
+                colorScheme: .silver
+            ),
+            BadgeDefinition(
+                name: "改善ストリーク",
+                description: "14日連続で健康指標が改善",
+                type: .special,
+                requirement: .special,
+                iconName: "chart.line.uptrend.xyaxis",
+                colorScheme: .platinum
+            ),
+            
+            // Extended Milestone Badges
+            BadgeDefinition(
+                name: "センチュリオン",
+                description: "100回の健康記録を達成",
+                type: .milestone,
+                requirement: .recordCount(count: 100),
+                iconName: "100.square.fill",
+                colorScheme: .platinum
+            ),
+            BadgeDefinition(
+                name: "レジェンド",
+                description: "365回の健康記録を達成",
+                type: .milestone,
+                requirement: .recordCount(count: 365),
+                iconName: "crown.fill",
+                colorScheme: .platinum
+            ),
+            
+            // Extended Streak Badges
+            BadgeDefinition(
+                name: "アイアンウィル",
+                description: "60日連続記録を達成",
+                type: .streak,
+                requirement: .streak(days: 60),
+                iconName: "shield.fill",
+                colorScheme: .gold
+            ),
+            BadgeDefinition(
+                name: "不屈の精神",
+                description: "90日連続記録を達成",
+                type: .streak,
+                requirement: .streak(days: 90),
+                iconName: "medal.fill",
                 colorScheme: .platinum
             )
         ]

@@ -12,6 +12,7 @@ struct BadgeEarnedCelebrationView: View {
     @State private var titleOpacity: Double = 0
     @State private var messageOpacity: Double = 0
     @State private var buttonOpacity: Double = 0
+    @State private var confettiParticles: [ConfettiParticle] = []
     
     var body: some View {
         GeometryReader { geometry in
@@ -201,9 +202,23 @@ struct BadgeEarnedCelebrationView: View {
     }
     
     private func shareAchievement() {
-        // TODO: Implement sharing functionality
-        // This would integrate with SocialShareService
-        print("Sharing badge achievement: \(badge.displayName)")
+        Task {
+            do {
+                // Create mock user for sharing (in production, this would come from user session)
+                let mockUser = try User(name: "ヘルスユーザー", age: 30, height: 170.0, targetWeight: 65.0)
+                
+                let socialShareService = SocialShareService()
+                let success = try await socialShareService.shareAchievement(badge, user: mockUser)
+                
+                if success {
+                    print("Successfully shared badge achievement: \(badge.displayName)")
+                } else {
+                    print("User cancelled sharing")
+                }
+            } catch {
+                print("Failed to share achievement: \(error.localizedDescription)")
+            }
+        }
     }
     
     private var dateTimeFormatter: DateFormatter {
@@ -211,30 +226,6 @@ struct BadgeEarnedCelebrationView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter
-    }
-}
-
-/// Animated confetti effect for celebration
-struct ConfettiView: View {
-    @State private var confettiParticles: [ConfettiParticle] = []
-    
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                ForEach(confettiParticles, id: \.id) { particle in
-                    Circle()
-                        .fill(particle.color)
-                        .frame(width: particle.size, height: particle.size)
-                        .position(particle.position)
-                        .opacity(particle.opacity)
-                        .animation(
-                            .linear(duration: particle.animationDuration)
-                            .repeatForever(autoreverses: false),
-                            value: particle.position
-                        )
-                }
-            }
-        }
     }
     
     private func generateConfetti(screenWidth: Double = 400, screenHeight: Double = 800) {
@@ -274,6 +265,31 @@ struct ConfettiView: View {
     }
 }
 
+/// Animated confetti effect for celebration
+struct ConfettiView: View {
+    @State private var confettiParticles: [ConfettiParticle] = []
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                ForEach(confettiParticles, id: \.id) { particle in
+                    Circle()
+                        .fill(particle.color)
+                        .frame(width: particle.size, height: particle.size)
+                        .position(particle.position)
+                        .opacity(particle.opacity)
+                        .animation(
+                            .linear(duration: particle.animationDuration)
+                            .repeatForever(autoreverses: false),
+                            value: particle.position
+                        )
+                }
+            }
+        }
+    }
+    
+}
+
 /// Individual confetti particle data
 struct ConfettiParticle {
     let id: UUID
@@ -285,40 +301,7 @@ struct ConfettiParticle {
     let animationDuration: Double
 }
 
-/// Streak indicator view for showing consecutive achievements
-struct StreakIndicatorView: View {
-    let streakCount: Int
-    let isActive: Bool
-    
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "flame.fill")
-                .font(.title2)
-                .foregroundColor(isActive ? .orange : .gray)
-                .symbolEffect(.pulse, isActive: isActive)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(streakCount)日連続")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(isActive ? .primary : .secondary)
-                
-                Text("継続記録中")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isActive ? Color.orange.opacity(0.1) : Color.gray.opacity(0.1))
-                .stroke(isActive ? Color.orange.opacity(0.3) : Color.gray.opacity(0.3), lineWidth: 1)
-        )
-        .scaleEffect(isActive ? 1.05 : 1.0)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isActive)
-    }
-}
+// StreakIndicatorView is defined in StreakIndicatorView.swift
 
 // MARK: - Previews
 

@@ -141,6 +141,73 @@ protocol GoalTrackerProtocol {
     func generateInsights(
         from comparisons: [GoalComparisonResult]
     ) async throws -> [GoalInsight]
+    
+    // MARK: - AI Goal Suggestion System (Phase 2.2)
+    
+    func generateAIGoalSuggestions(
+        for user: User,
+        healthRecords: [HealthRecordProtocol],
+        analysisDepth: AIAnalysisDepth
+    ) async throws -> [AIGoalSuggestion]
+    
+    func analyzeHealthDataPatterns(
+        healthRecords: [HealthRecordProtocol],
+        timeframe: AnalysisTimeframe
+    ) async throws -> HealthDataPatternAnalysis
+    
+    func suggestSeasonalGoalAdjustments(
+        for goals: [Goal],
+        currentSeason: Season,
+        historicalData: [HealthRecordProtocol]
+    ) async throws -> [SeasonalGoalAdjustment]
+    
+    func generateProgressiveGoalPlan(
+        targetGoal: Goal,
+        userCapability: UserCapabilityProfile,
+        timeline: ProgressiveTimeline
+    ) async throws -> ProgressiveGoalPlan
+    
+    func evaluateGoalFeasibility(
+        proposedGoal: Goal,
+        userHistory: UserGoalHistory,
+        healthBaseline: HealthBaseline
+    ) async throws -> GoalFeasibilityAssessment
+    
+    func optimizeGoalParameters(
+        baseGoal: Goal,
+        userPreferences: GoalPreferences,
+        constraints: UserConstraints
+    ) async throws -> OptimizedGoal
+    
+    func generateSmartMilestones(
+        for goal: Goal,
+        adaptationStyle: AdaptationStyle,
+        motivationProfile: MotivationProfile
+    ) async throws -> [SmartMilestone]
+    
+    func predictGoalSuccess(
+        goal: Goal,
+        userProfile: PredictiveUserProfile,
+        environmentalFactors: [EnvironmentalFactor]
+    ) async throws -> GoalSuccessPrediction
+    
+    func generatePersonalizedMotivation(
+        for goal: Goal,
+        userPersonality: PersonalityProfile,
+        currentMood: MoodState
+    ) async throws -> PersonalizedMotivationPlan
+    
+    func suggestGoalCombinations(
+        availableGoals: [AIGoalSuggestion],
+        userCapacity: UserCapacity,
+        synergies: GoalSynergyAnalysis
+    ) async throws -> [GoalCombinationSuggestion]
+    
+    func adaptGoalsToLifestyle(
+        goals: [Goal],
+        lifestyleAnalysis: LifestyleAnalysis,
+        adaptationPreferences: AdaptationPreferences
+    ) async throws -> [LifestyleAdaptedGoal]
 }
 
 // MARK: - Supporting Types
@@ -161,25 +228,7 @@ enum MilestoneStrategy: String, CaseIterable {
     }
 }
 
-struct GoalProgressSnapshot: Codable {
-    let goalId: UUID
-    let timestamp: Date
-    let value: Double
-    let progress: Double
-    let velocityChange: Double
-    let milestoneReached: Bool
-    let source: SnapshotSource
-    
-    init(goalId: UUID, timestamp: Date, value: Double, progress: Double, velocityChange: Double, milestoneReached: Bool, source: SnapshotSource) {
-        self.goalId = goalId
-        self.timestamp = timestamp
-        self.value = value
-        self.progress = progress
-        self.velocityChange = velocityChange
-        self.milestoneReached = milestoneReached
-        self.source = source
-    }
-}
+// Note: GoalProgressSnapshot is now defined in AIGoalSuggestionModels.swift
 
 enum SnapshotSource: String, CaseIterable, Codable {
     case automatic = "automatic"

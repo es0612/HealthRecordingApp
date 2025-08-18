@@ -1,4 +1,7 @@
 import Foundation
+import SwiftData
+
+typealias HealthBadge = Badge // SwiftData Badge model
 
 /// Use Case protocol for recording health data operations
 /// Handles both automatic HealthKit sync and manual data entry
@@ -26,9 +29,9 @@ protocol RecordHealthDataUseCaseProtocol {
     
     /// Check and process badge earning conditions after data recording
     /// - Parameter user: The User to check badge conditions for
-    /// - Returns: Array of newly earned Badge objects
+    /// - Returns: Array of newly earned HealthBadge objects
     /// - Throws: HealthAppError if badge processing fails
-    func processBadgeEarning(for user: User) async throws -> [Badge]
+    func processBadgeEarning(for user: User) async throws -> [HealthBadge]
 }
 
 /// Data structure for manual health data input

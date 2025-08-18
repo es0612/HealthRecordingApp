@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Correlation Analysis Models
 
@@ -407,30 +408,7 @@ enum SeasonalCycle: String, CaseIterable, Codable {
     }
 }
 
-enum Season: String, CaseIterable, Codable {
-    case spring = "spring"
-    case summer = "summer"
-    case autumn = "autumn"
-    case winter = "winter"
-    
-    var displayName: String {
-        switch self {
-        case .spring: return "春"
-        case .summer: return "夏"
-        case .autumn: return "秋"
-        case .winter: return "冬"
-        }
-    }
-    
-    var monthRange: ClosedRange<Int> {
-        switch self {
-        case .spring: return 3...5
-        case .summer: return 6...8
-        case .autumn: return 9...11
-        case .winter: return 12...2 // Note: Winter spans year boundary
-        }
-    }
-}
+// Season enum is defined in AIGoalSuggestionModels.swift
 
 enum SeasonalTrend: String, CaseIterable, Codable {
     case increasing = "increasing"
@@ -721,6 +699,26 @@ enum InsightAnomalySeverity: String, CaseIterable, Codable {
         case .informational: return "#0088FF"
         }
     }
+    
+    var color: Color {
+        switch self {
+        case .critical: return .red
+        case .high: return .orange
+        case .medium: return .yellow
+        case .low: return .green
+        case .informational: return .blue
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .critical: return "exclamationmark.triangle.fill"
+        case .high: return "exclamationmark.triangle"
+        case .medium: return "exclamationmark.circle"
+        case .low: return "info.circle"
+        case .informational: return "info.circle.fill"
+        }
+    }
 }
 
 struct PotentialCause: Codable, Identifiable {
@@ -798,6 +796,7 @@ struct ImmediateAction: Codable, Identifiable {
 }
 
 enum ActionPriority: String, CaseIterable, Codable {
+    case immediate = "immediate"
     case urgent = "urgent"
     case high = "high"
     case medium = "medium"
@@ -805,6 +804,7 @@ enum ActionPriority: String, CaseIterable, Codable {
     
     var displayName: String {
         switch self {
+        case .immediate: return "即座"
         case .urgent: return "緊急"
         case .high: return "高"
         case .medium: return "中"
@@ -872,8 +872,9 @@ struct MonitoringRecommendation: Codable, Identifiable {
     let alertThresholds: [AlertThreshold]
     let reviewSchedule: ReviewSchedule
     let escalationCriteria: [EscalationCriterion]
+    let description: String
     
-    init(monitoringType: MonitoringType, frequency: MonitoringFrequency, duration: MonitoringDuration, keyMetrics: [String], alertThresholds: [AlertThreshold], reviewSchedule: ReviewSchedule, escalationCriteria: [EscalationCriterion]) {
+    init(monitoringType: MonitoringType, frequency: MonitoringFrequency, duration: MonitoringDuration, keyMetrics: [String], alertThresholds: [AlertThreshold], reviewSchedule: ReviewSchedule, escalationCriteria: [EscalationCriterion], description: String) {
         self.id = UUID()
         self.monitoringType = monitoringType
         self.frequency = frequency
@@ -882,6 +883,7 @@ struct MonitoringRecommendation: Codable, Identifiable {
         self.alertThresholds = alertThresholds
         self.reviewSchedule = reviewSchedule
         self.escalationCriteria = escalationCriteria
+        self.description = description
     }
 }
 
@@ -904,19 +906,23 @@ enum MonitoringType: String, CaseIterable, Codable {
 }
 
 enum MonitoringFrequency: String, CaseIterable, Codable {
+    case continuous = "continuous"
     case realTime = "real_time"
     case hourly = "hourly"
     case daily = "daily"
     case weekly = "weekly"
     case monthly = "monthly"
+    case quarterly = "quarterly"
     
     var displayName: String {
         switch self {
+        case .continuous: return "継続的"
         case .realTime: return "リアルタイム"
         case .hourly: return "時間毎"
         case .daily: return "日次"
         case .weekly: return "週次"
         case .monthly: return "月次"
+        case .quarterly: return "四半期"
         }
     }
 }
@@ -1102,20 +1108,28 @@ enum AnomalyDetectionMethod: String, CaseIterable, Codable {
     case statisticalThreshold = "statistical_threshold"
     case movingAverage = "moving_average"
     case seasonalDecomposition = "seasonal_decomposition"
+    case timeSeriesDecomposition = "time_series_decomposition"
     case isolationForest = "isolation_forest"
     case oneClassSVM = "one_class_svm"
     case autoencoder = "autoencoder"
+    case neuralNetwork = "neural_network"
+    case clustering = "clustering"
     case ensemble = "ensemble"
+    case ensembleMethod = "ensemble_method"
     
     var displayName: String {
         switch self {
         case .statisticalThreshold: return "統計的閾値"
         case .movingAverage: return "移動平均"
         case .seasonalDecomposition: return "季節分解"
+        case .timeSeriesDecomposition: return "時系列分解"
         case .isolationForest: return "Isolation Forest"
         case .oneClassSVM: return "One-Class SVM"
         case .autoencoder: return "オートエンコーダー"
+        case .neuralNetwork: return "ニューラルネットワーク"
+        case .clustering: return "クラスタリング"
         case .ensemble: return "アンサンブル"
+        case .ensembleMethod: return "アンサンブル手法"
         }
     }
 }
@@ -1352,6 +1366,467 @@ enum ChangeSignificance: String, CaseIterable, Codable {
         case .low: return "低い"
         case .negligible: return "無視できる"
         }
+    }
+}
+
+// MARK: - Enhanced Analysis Models (Phase 2.1)
+
+// Enhanced Anomaly Detection Results
+struct EnhancedAnomalyResult: Codable, Identifiable {
+    let id: UUID
+    let detectedAnomalies: [AnomalousPattern]
+    let methodResults: [AnomalyDetectionMethod: [AnomalousPattern]]
+    let anomalyInsights: [HealthInsight]
+    let riskAssessment: AnomalyRiskAssessment
+    let analysisMetadata: AnomalyAnalysisMetadata
+    
+    init(detectedAnomalies: [AnomalousPattern], methodResults: [AnomalyDetectionMethod: [AnomalousPattern]], anomalyInsights: [HealthInsight], riskAssessment: AnomalyRiskAssessment, analysisMetadata: AnomalyAnalysisMetadata) {
+        self.id = UUID()
+        self.detectedAnomalies = detectedAnomalies
+        self.methodResults = methodResults
+        self.anomalyInsights = anomalyInsights
+        self.riskAssessment = riskAssessment
+        self.analysisMetadata = analysisMetadata
+    }
+}
+
+struct AnomalyAnalysisMetadata: Codable {
+    let detectionMethods: Set<AnomalyDetectionMethod>
+    let analysisTimestamp: Date
+    let dataQualityScore: Double
+    let confidenceLevel: Double
+    let processingTimeMs: Double?
+    let algorithmVersions: [AnomalyDetectionMethod: String]
+    
+    init(detectionMethods: Set<AnomalyDetectionMethod>, analysisTimestamp: Date, dataQualityScore: Double, confidenceLevel: Double, processingTimeMs: Double? = nil, algorithmVersions: [AnomalyDetectionMethod: String] = [:]) {
+        self.detectionMethods = detectionMethods
+        self.analysisTimestamp = analysisTimestamp
+        self.dataQualityScore = dataQualityScore
+        self.confidenceLevel = confidenceLevel
+        self.processingTimeMs = processingTimeMs
+        self.algorithmVersions = algorithmVersions
+    }
+}
+
+struct AnomalyRiskAssessment: Codable, Identifiable {
+    let id: UUID
+    let overallRiskLevel: RiskLevel
+    let criticalAnomalies: [AnomalousPattern]
+    let riskFactors: [RiskFactor]
+    let immediateActions: [ImmediateAction]
+    let monitoringRecommendations: [MonitoringRecommendation]
+    let riskScore: Double // 0.0 to 1.0
+    
+    init(overallRiskLevel: RiskLevel, criticalAnomalies: [AnomalousPattern], riskFactors: [RiskFactor], immediateActions: [ImmediateAction], monitoringRecommendations: [MonitoringRecommendation], riskScore: Double) {
+        self.id = UUID()
+        self.overallRiskLevel = overallRiskLevel
+        self.criticalAnomalies = criticalAnomalies
+        self.riskFactors = riskFactors
+        self.immediateActions = immediateActions
+        self.monitoringRecommendations = monitoringRecommendations
+        self.riskScore = riskScore
+    }
+}
+
+// Advanced Correlation Analysis
+struct AdvancedCorrelationOptions: Codable {
+    let minimumSampleSize: Int
+    let timeWindow: CorrelationTimeWindow
+    let maxLagDays: Int
+    let controlVariables: [HealthDataType]
+    let confidenceLevel: Double
+    let includeCausalityAnalysis: Bool
+    let includeNonLinearPatterns: Bool
+    
+    init(minimumSampleSize: Int = 10, timeWindow: CorrelationTimeWindow = .weekly, maxLagDays: Int = 7, controlVariables: [HealthDataType] = [], confidenceLevel: Double = 0.95, includeCausalityAnalysis: Bool = true, includeNonLinearPatterns: Bool = true) {
+        self.minimumSampleSize = minimumSampleSize
+        self.timeWindow = timeWindow
+        self.maxLagDays = maxLagDays
+        self.controlVariables = controlVariables
+        self.confidenceLevel = confidenceLevel
+        self.includeCausalityAnalysis = includeCausalityAnalysis
+        self.includeNonLinearPatterns = includeNonLinearPatterns
+    }
+    
+    var description: String {
+        return "AdvancedCorrelationOptions(sampleSize: \(minimumSampleSize), window: \(timeWindow.rawValue), maxLag: \(maxLagDays))"
+    }
+}
+
+struct AdvancedCorrelationResult: Codable, Identifiable {
+    let id: UUID
+    let primaryDataType: HealthDataType
+    let secondaryDataType: HealthDataType
+    let correlationResults: [CorrelationMethod: Double]
+    let partialCorrelations: [PartialCorrelationResult]
+    let timeLaggedCorrelations: [TimeLaggedCorrelation]
+    let nonLinearPatterns: [NonLinearPattern]
+    let causalityResult: CausalityAnalysisResult
+    let significanceResults: [CorrelationMethod: StatisticalSignificanceResult]
+    let analysisOptions: AdvancedCorrelationOptions
+    let sampleSize: Int
+    let dataQualityMetrics: DataQualityMetrics
+    let interpretationGuide: CorrelationInterpretationGuide
+    let analysisTimestamp: Date
+    
+    init(primaryDataType: HealthDataType, secondaryDataType: HealthDataType, correlationResults: [CorrelationMethod: Double], partialCorrelations: [PartialCorrelationResult], timeLaggedCorrelations: [TimeLaggedCorrelation], nonLinearPatterns: [NonLinearPattern], causalityResult: CausalityAnalysisResult, significanceResults: [CorrelationMethod: StatisticalSignificanceResult], analysisOptions: AdvancedCorrelationOptions, sampleSize: Int, dataQualityMetrics: DataQualityMetrics, interpretationGuide: CorrelationInterpretationGuide) {
+        self.id = UUID()
+        self.primaryDataType = primaryDataType
+        self.secondaryDataType = secondaryDataType
+        self.correlationResults = correlationResults
+        self.partialCorrelations = partialCorrelations
+        self.timeLaggedCorrelations = timeLaggedCorrelations
+        self.nonLinearPatterns = nonLinearPatterns
+        self.causalityResult = causalityResult
+        self.significanceResults = significanceResults
+        self.analysisOptions = analysisOptions
+        self.sampleSize = sampleSize
+        self.dataQualityMetrics = dataQualityMetrics
+        self.interpretationGuide = interpretationGuide
+        self.analysisTimestamp = Date()
+    }
+}
+
+enum CorrelationMethod: String, CaseIterable, Codable {
+    case pearson = "pearson"
+    case spearman = "spearman"
+    case kendall = "kendall"
+    case partial = "partial"
+    case canonical = "canonical"
+    
+    var displayName: String {
+        switch self {
+        case .pearson: return "ピアソン相関"
+        case .spearman: return "スピアマン順位相関"
+        case .kendall: return "ケンドールのタウ"
+        case .partial: return "偏相関"
+        case .canonical: return "正準相関"
+        }
+    }
+}
+
+struct TimeLaggedCorrelation: Codable, Identifiable {
+    let id: UUID
+    let baseCorrelation: CorrelationAnalysis
+    let lagDays: Int
+    let strength: Double
+    let direction: LagDirection
+    let significance: StatisticalSignificance
+    
+    init(baseCorrelation: CorrelationAnalysis, lagDays: Int, strength: Double) {
+        self.id = UUID()
+        self.baseCorrelation = baseCorrelation
+        self.lagDays = lagDays
+        self.strength = strength
+        self.direction = lagDays > 0 ? .leading : lagDays < 0 ? .lagging : .synchronous
+        self.significance = strength > 0.5 ? .significant : strength > 0.3 ? .marginallySignificant : .notSignificant
+    }
+}
+
+enum LagDirection: String, CaseIterable, Codable {
+    case leading = "leading"
+    case lagging = "lagging"
+    case synchronous = "synchronous"
+    
+    var displayName: String {
+        switch self {
+        case .leading: return "先行"
+        case .lagging: return "遅行"
+        case .synchronous: return "同期"
+        }
+    }
+}
+
+struct NonLinearPattern: Codable, Identifiable {
+    let id: UUID
+    let type: NonLinearPatternType
+    let strength: Double
+    let equation: String?
+    let parameters: [String: Double]
+    let rSquared: Double
+    
+    init(type: NonLinearPatternType, strength: Double, equation: String? = nil, parameters: [String: Double] = [:], rSquared: Double = 0.0) {
+        self.id = UUID()
+        self.type = type
+        self.strength = strength
+        self.equation = equation
+        self.parameters = parameters
+        self.rSquared = rSquared
+    }
+}
+
+enum NonLinearPatternType: String, CaseIterable, Codable {
+    case quadratic = "quadratic"
+    case exponential = "exponential"
+    case logarithmic = "logarithmic"
+    case polynomial = "polynomial"
+    case sinusoidal = "sinusoidal"
+    case power = "power"
+    
+    var displayName: String {
+        switch self {
+        case .quadratic: return "二次関数"
+        case .exponential: return "指数関数"
+        case .logarithmic: return "対数関数"
+        case .polynomial: return "多項式"
+        case .sinusoidal: return "正弦波"
+        case .power: return "べき関数"
+        }
+    }
+}
+
+// Comprehensive Monthly Report
+struct ComprehensiveMonthlyReport: Codable, Identifiable {
+    let id: UUID
+    let userId: UUID
+    let reportMonth: Date
+    let executiveSummary: HealthInsight
+    let keyMetrics: [HealthInsight]
+    let correlationAnalysis: AdvancedCorrelationAnalysis?
+    let anomalyAnalysis: EnhancedAnomalyAnalysis
+    let trendAnalysis: AdvancedTrendAnalysis
+    let goalAnalysis: IntelligentGoalAnalysis
+    let riskAssessment: ComprehensiveHealthRiskAssessment
+    let personalizedRecommendations: [PersonalizedRecommendation]
+    let dataQualityAssessment: ComprehensiveDataQualityAssessment
+    let generatedAt: Date
+    let reportVersion: String
+    let analyticsLevel: AnalyticsLevel
+    
+    init(userId: UUID, reportMonth: Date, executiveSummary: HealthInsight, keyMetrics: [HealthInsight], correlationAnalysis: AdvancedCorrelationAnalysis?, anomalyAnalysis: EnhancedAnomalyAnalysis, trendAnalysis: AdvancedTrendAnalysis, goalAnalysis: IntelligentGoalAnalysis, riskAssessment: ComprehensiveHealthRiskAssessment, personalizedRecommendations: [PersonalizedRecommendation], dataQualityAssessment: ComprehensiveDataQualityAssessment, generatedAt: Date, reportVersion: String, analyticsLevel: AnalyticsLevel) {
+        self.id = UUID()
+        self.userId = userId
+        self.reportMonth = reportMonth
+        self.executiveSummary = executiveSummary
+        self.keyMetrics = keyMetrics
+        self.correlationAnalysis = correlationAnalysis
+        self.anomalyAnalysis = anomalyAnalysis
+        self.trendAnalysis = trendAnalysis
+        self.goalAnalysis = goalAnalysis
+        self.riskAssessment = riskAssessment
+        self.personalizedRecommendations = personalizedRecommendations
+        self.dataQualityAssessment = dataQualityAssessment
+        self.generatedAt = generatedAt
+        self.reportVersion = reportVersion
+        self.analyticsLevel = analyticsLevel
+    }
+}
+
+enum AnalyticsLevel: String, CaseIterable, Codable {
+    case basic = "basic"
+    case standard = "standard"
+    case comprehensive = "comprehensive"
+    case expert = "expert"
+    
+    var displayName: String {
+        switch self {
+        case .basic: return "基本"
+        case .standard: return "標準"
+        case .comprehensive: return "包括的"
+        case .expert: return "専門"
+        }
+    }
+}
+
+// Supporting Types for Monthly Report
+struct AdvancedCorrelationAnalysis: Codable, Identifiable {
+    let id: UUID
+    let correlationResults: [AdvancedCorrelationResult]
+    let insights: [HealthInsight]
+    let keyFindings: [CorrelationKeyFinding]
+    let causalityDiscoveries: [CausalityDiscovery]
+    
+    init(correlationResults: [AdvancedCorrelationResult], insights: [HealthInsight], keyFindings: [CorrelationKeyFinding], causalityDiscoveries: [CausalityDiscovery]) {
+        self.id = UUID()
+        self.correlationResults = correlationResults
+        self.insights = insights
+        self.keyFindings = keyFindings
+        self.causalityDiscoveries = causalityDiscoveries
+    }
+}
+
+struct EnhancedAnomalyAnalysis: Codable, Identifiable {
+    let id: UUID
+    let detectedAnomalies: [AnomalousPattern]
+    let insights: [HealthInsight]
+    let riskAssessment: AnomalyRiskAssessment
+    let patterns: [AnomalyPattern]
+    let interventionRecommendations: [InterventionRecommendation]
+    
+    init(detectedAnomalies: [AnomalousPattern], insights: [HealthInsight], riskAssessment: AnomalyRiskAssessment, patterns: [AnomalyPattern], interventionRecommendations: [InterventionRecommendation]) {
+        self.id = UUID()
+        self.detectedAnomalies = detectedAnomalies
+        self.insights = insights
+        self.riskAssessment = riskAssessment
+        self.patterns = patterns
+        self.interventionRecommendations = interventionRecommendations
+    }
+}
+
+struct AdvancedTrendAnalysis: Codable, Identifiable {
+    let id: UUID
+    let insights: [HealthInsight]
+    let trendDirections: [HealthDataType: TrendDirection]
+    let predictions: [HealthPrediction]
+    let seasonalPatterns: [SeasonalPattern]
+    let changePoints: [ChangePoint]
+    
+    init(insights: [HealthInsight], trendDirections: [HealthDataType: TrendDirection], predictions: [HealthPrediction], seasonalPatterns: [SeasonalPattern], changePoints: [ChangePoint]) {
+        self.id = UUID()
+        self.insights = insights
+        self.trendDirections = trendDirections
+        self.predictions = predictions
+        self.seasonalPatterns = seasonalPatterns
+        self.changePoints = changePoints
+    }
+}
+
+struct IntelligentGoalAnalysis: Codable, Identifiable {
+    let id: UUID
+    let insights: [HealthInsight]
+    let goalProgress: [GoalProgressAnalysis]
+    let adaptiveRecommendations: [AdaptiveGoalRecommendation]
+    let motivationAnalysis: MotivationAnalysis
+    let adherenceInsights: [AdherenceInsight]
+    
+    init(insights: [HealthInsight], goalProgress: [GoalProgressAnalysis], adaptiveRecommendations: [AdaptiveGoalRecommendation], motivationAnalysis: MotivationAnalysis, adherenceInsights: [AdherenceInsight]) {
+        self.id = UUID()
+        self.insights = insights
+        self.goalProgress = goalProgress
+        self.adaptiveRecommendations = adaptiveRecommendations
+        self.motivationAnalysis = motivationAnalysis
+        self.adherenceInsights = adherenceInsights
+    }
+}
+
+struct RiskMitigationStrategy: Codable, Identifiable {
+    let id: UUID
+    let strategyType: String
+    let description: String
+    let priority: ActionPriority
+    let timeframe: String
+    let expectedEffectiveness: Double
+    
+    init(strategyType: String, description: String, priority: ActionPriority, timeframe: String, expectedEffectiveness: Double) {
+        self.id = UUID()
+        self.strategyType = strategyType
+        self.description = description
+        self.priority = priority
+        self.timeframe = timeframe
+        self.expectedEffectiveness = expectedEffectiveness
+    }
+}
+
+struct PopulationRiskComparison: Codable, Identifiable {
+    let id: UUID
+    let comparisonGroup: String
+    let userPercentile: Double
+    let averageRiskScore: Double
+    let confidenceLevel: Double
+    
+    init(comparisonGroup: String, userPercentile: Double, averageRiskScore: Double, confidenceLevel: Double) {
+        self.id = UUID()
+        self.comparisonGroup = comparisonGroup
+        self.userPercentile = userPercentile
+        self.averageRiskScore = averageRiskScore
+        self.confidenceLevel = confidenceLevel
+    }
+}
+
+struct ComprehensiveHealthRiskAssessment: Codable, Identifiable {
+    let id: UUID
+    let overallRiskScore: Double
+    let identifiedRisks: [IdentifiedRisk]
+    let protectiveFactors: [ProtectiveFactor]
+    let riskMitigationStrategies: [RiskMitigationStrategy]
+    let monitoringPlan: MonitoringPlan
+    let populationComparison: PopulationRiskComparison?
+    
+    init(overallRiskScore: Double, identifiedRisks: [IdentifiedRisk], protectiveFactors: [ProtectiveFactor], riskMitigationStrategies: [RiskMitigationStrategy], monitoringPlan: MonitoringPlan, populationComparison: PopulationRiskComparison? = nil) {
+        self.id = UUID()
+        self.overallRiskScore = overallRiskScore
+        self.identifiedRisks = identifiedRisks
+        self.protectiveFactors = protectiveFactors
+        self.riskMitigationStrategies = riskMitigationStrategies
+        self.monitoringPlan = monitoringPlan
+        self.populationComparison = populationComparison
+    }
+}
+
+struct DataQualityImprovement: Codable, Identifiable {
+    let id: UUID
+    let category: DataQualityCategory
+    let description: String
+    let impact: QualityImpact
+    let effort: ImplementationEffort
+    let priority: ImprovementPriority
+    let expectedImprovement: Double
+    let timeToImplement: TimeInterval
+    let actionableSteps: [String]
+    
+    init(category: DataQualityCategory, description: String, impact: QualityImpact, effort: ImplementationEffort, priority: ImprovementPriority, expectedImprovement: Double, timeToImplement: TimeInterval, actionableSteps: [String]) {
+        self.id = UUID()
+        self.category = category
+        self.description = description
+        self.impact = impact
+        self.effort = effort
+        self.priority = priority
+        self.expectedImprovement = expectedImprovement
+        self.timeToImplement = timeToImplement
+        self.actionableSteps = actionableSteps
+    }
+}
+
+enum DataQualityCategory: String, Codable, CaseIterable {
+    case completeness = "完全性"
+    case consistency = "一貫性"
+    case accuracy = "正確性"
+    case timeliness = "適時性"
+    case validity = "妥当性"
+}
+
+enum QualityImpact: String, Codable, CaseIterable {
+    case critical = "重大"
+    case high = "高"
+    case medium = "中"
+    case low = "低"
+}
+
+enum ImplementationEffort: String, Codable, CaseIterable {
+    case minimal = "最小"
+    case low = "低"
+    case medium = "中"
+    case high = "高"
+    case extensive = "extensive"
+}
+
+enum ImprovementPriority: String, Codable, CaseIterable {
+    case urgent = "緊急"
+    case high = "高"
+    case medium = "中"
+    case low = "低"
+    case deferred = "延期"
+}
+
+struct ComprehensiveDataQualityAssessment: Codable, Identifiable {
+    let id: UUID
+    let overallScore: Double
+    let completenessScore: Double
+    let consistencyScore: Double
+    let accuracyScore: Double
+    let timelinessScore: Double
+    let qualityIssues: [DataQualityIssue]
+    let improvementRecommendations: [DataQualityImprovement]
+    
+    init(overallScore: Double, completenessScore: Double, consistencyScore: Double, accuracyScore: Double, timelinessScore: Double, qualityIssues: [DataQualityIssue], improvementRecommendations: [DataQualityImprovement]) {
+        self.id = UUID()
+        self.overallScore = overallScore
+        self.completenessScore = completenessScore
+        self.consistencyScore = consistencyScore
+        self.accuracyScore = accuracyScore
+        self.timelinessScore = timelinessScore
+        self.qualityIssues = qualityIssues
+        self.improvementRecommendations = improvementRecommendations
     }
 }
 

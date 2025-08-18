@@ -233,12 +233,42 @@ struct BadgeProgressCard: View {
     }
     
     private var nextBadgesWithProgress: [(badge: Badge, progress: Double)] {
-        // Mock progress calculation - should use BadgeService
-        unearnedBadges.map { badge in
-            let mockProgress = Double.random(in: 0.1...0.9)
-            return (badge: badge, progress: mockProgress)
+        unearnedBadges.compactMap { badge in
+            // Calculate real progress using BadgeService
+            // For now, we'll use synchronous mock calculation
+            // TODO: Implement async progress loading
+            let progress = calculateMockProgress(for: badge)
+            return (badge: badge, progress: progress)
         }
         .sorted { $0.progress > $1.progress }
+    }
+    
+    private func calculateMockProgress(for badge: Badge) -> Double {
+        // Smart mock progress based on badge type and requirement
+        switch badge.requirement {
+        case .recordCount(let targetCount):
+            // Simulate progress based on badges count (mock current records)
+            let mockCurrentCount = max(1, badges.count * 2) // Assume some records exist
+            let progress = Double(mockCurrentCount) / Double(targetCount)
+            return min(0.95, max(0.05, progress)) // Clamp between 5% and 95%
+            
+        case .streak(let targetDays):
+            // Simulate streak progress
+            let mockCurrentStreak = max(1, currentStreak)
+            let progress = Double(mockCurrentStreak) / Double(targetDays)
+            return min(0.90, max(0.10, progress))
+            
+        case .milestone(let targetValue):
+            // Simulate weight milestone progress (assuming weight loss goal)
+            let mockCurrentWeight = 75.0 // Mock current weight
+            let initialWeight = 85.0 // Mock starting weight
+            let progress = (initialWeight - mockCurrentWeight) / (initialWeight - targetValue)
+            return min(0.85, max(0.15, progress))
+            
+        case .special:
+            // Special badges have lower progress as they're harder to achieve
+            return Double.random(in: 0.05...0.40)
+        }
     }
     
     // MARK: - Actions

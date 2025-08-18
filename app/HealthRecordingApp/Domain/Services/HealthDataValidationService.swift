@@ -206,6 +206,58 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
                     suggestion: "高血糖の可能性があります"
                 ))
             }
+            
+        case .bloodPressure:
+            if value < 60 {
+                errors.append(DataValidationError.suspiciousValue(
+                    value: value,
+                    dataType: dataType,
+                    reason: "血圧が60mmHg未満です",
+                    suggestion: "低血圧の可能性があります"
+                ))
+            }
+            if value > 200 {
+                errors.append(DataValidationError.suspiciousValue(
+                    value: value,
+                    dataType: dataType,
+                    reason: "血圧が200mmHgを超えています",
+                    suggestion: "高血圧の可能性があります"
+                ))
+            }
+            
+        case .sleep:
+            if value > 12 {
+                errors.append(DataValidationError.suspiciousValue(
+                    value: value,
+                    dataType: dataType,
+                    reason: "睡眠時間が12時間を超えています",
+                    suggestion: "記録時間を確認してください"
+                ))
+            }
+            
+        case .hydration:
+            if value > 5 {
+                errors.append(DataValidationError.suspiciousValue(
+                    value: value,
+                    dataType: dataType,
+                    reason: "水分摂取量が5Lを超えています",
+                    suggestion: "摂取量を確認してください"
+                ))
+            }
+            
+        case .exercise:
+            if value > 240 {
+                errors.append(DataValidationError.suspiciousValue(
+                    value: value,
+                    dataType: dataType,
+                    reason: "運動時間が4時間を超えています",
+                    suggestion: "運動時間を確認してください"
+                ))
+            }
+            
+        case .custom:
+            // Custom data types have basic validation only
+            break
         }
         
         return errors.isEmpty ? .success : .failure(errors)
@@ -327,6 +379,80 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
                 validationRules: [
                     "20mg/dL以上600mg/dL以下で入力してください",
                     "小数点以下は1桁まで入力可能です"
+                ]
+            )
+            
+        case .bloodPressure:
+            return HealthDataConstraints(
+                minimumValue: 40,
+                maximumValue: 250,
+                defaultValue: 120,
+                unit: "mmHg",
+                allowedUnits: ["mmHg"],
+                allowedPrecisions: [0],
+                description: "血圧",
+                validationRules: [
+                    "40mmHg以上250mmHg以下で入力してください",
+                    "整数で入力してください"
+                ]
+            )
+            
+        case .sleep:
+            return HealthDataConstraints(
+                minimumValue: 0,
+                maximumValue: 24,
+                defaultValue: 8,
+                unit: "時間",
+                allowedUnits: ["時間", "h", "hours"],
+                allowedPrecisions: [0, 1],
+                description: "睡眠時間",
+                validationRules: [
+                    "0時間以上24時間以下で入力してください",
+                    "小数点以下は1桁まで入力可能です"
+                ]
+            )
+            
+        case .hydration:
+            return HealthDataConstraints(
+                minimumValue: 0,
+                maximumValue: 10,
+                defaultValue: 2,
+                unit: "L",
+                allowedUnits: ["L", "mL"],
+                allowedPrecisions: [0, 1, 2],
+                description: "水分摂取量",
+                validationRules: [
+                    "0L以上10L以下で入力してください",
+                    "小数点以下は2桁まで入力可能です"
+                ]
+            )
+            
+        case .exercise:
+            return HealthDataConstraints(
+                minimumValue: 0,
+                maximumValue: 300,
+                defaultValue: 30,
+                unit: "分",
+                allowedUnits: ["分", "min", "minutes"],
+                allowedPrecisions: [0],
+                description: "運動時間",
+                validationRules: [
+                    "0分以上300分以下で入力してください",
+                    "整数で入力してください"
+                ]
+            )
+            
+        case .custom:
+            return HealthDataConstraints(
+                minimumValue: 0,
+                maximumValue: 999999,
+                defaultValue: 0,
+                unit: "",
+                allowedUnits: [""],
+                allowedPrecisions: [0, 1, 2],
+                description: "カスタムデータ",
+                validationRules: [
+                    "カスタムデータタイプです"
                 ]
             )
         }
@@ -471,6 +597,26 @@ final class HealthDataValidationService: HealthDataValidationServiceProtocol {
             
         case .bloodGlucose:
             // Already handled in validateValue
+            break
+            
+        case .bloodPressure:
+            // Already handled in validateValue
+            break
+            
+        case .sleep:
+            // Already handled in validateValue
+            break
+            
+        case .hydration:
+            // Already handled in validateValue
+            break
+            
+        case .exercise:
+            // Already handled in validateValue
+            break
+            
+        case .custom:
+            // Custom data types have minimal anomaly detection
             break
         }
         

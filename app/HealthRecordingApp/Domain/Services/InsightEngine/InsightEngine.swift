@@ -336,7 +336,7 @@ final class InsightEngine: InsightEngineProtocol {
             
             if zScore > anomalyThreshold {
                 let anomalyType: AnomalyType = record.value > baselineMean ? .spike : .drop
-                let severity: AnomalySeverity = zScore > 4.0 ? .critical : zScore > 3.0 ? .high : .medium
+                let severity: InsightAnomalySeverity = zScore > 4.0 ? .critical : zScore > 3.0 ? .high : .medium
                 
                 let anomaly = AnomalousPattern(
                     dataType: dataType,
@@ -354,6 +354,320 @@ final class InsightEngine: InsightEngineProtocol {
         }
         
         return anomalousPatterns
+    }
+    
+    // MARK: - Enhanced Anomaly Detection (Phase 2.1)
+    
+    func detectEnhancedAnomalousPatterns(
+        in healthRecords: [HealthRecordProtocol],
+        baselineData: [HealthRecordProtocol],
+        detectionMethods: Set<AnomalyDetectionMethod> = [.statisticalThreshold, .isolationForest, .timeSeriesDecomposition]
+    ) async throws -> EnhancedAnomalyResult {
+        let startTime = Date()
+        logger.debug("Starting enhanced multi-algorithm anomaly detection", context: [
+            "recordCount": healthRecords.count,
+            "baselineCount": baselineData.count,
+            "methods": detectionMethods.map { $0.rawValue }
+        ])
+        
+        guard !healthRecords.isEmpty && !baselineData.isEmpty else {
+            throw ValidationError.invalidInput("InsightEngine", value: "empty_data", reason: "Cannot detect anomalies with empty data")
+        }
+        
+        var methodResults: [AnomalyDetectionMethod: [AnomalousPattern]] = [:]
+        
+        // Apply multiple detection algorithms for ensemble approach
+        for method in detectionMethods {
+            do {
+                let anomalies = try await applyAnomalyDetectionMethod(
+                    method: method,
+                    records: healthRecords,
+                    baseline: baselineData
+                )
+                methodResults[method] = anomalies
+                logger.debug("Applied \(method.rawValue) detection", context: [
+                    "anomaliesFound": anomalies.count
+                ])
+            } catch {
+                logger.warning("Anomaly detection method \(method.rawValue) failed", context: [
+                    "error": error.localizedDescription
+                ])
+            }
+        }
+        
+        // Consolidate anomalies using ensemble consensus
+        let consolidatedAnomalies = consolidateAnomaliesByConsensus(methodResults)
+        let rankedAnomalies = rankAnomaliesBySignificance(consolidatedAnomalies)
+        
+        // Generate actionable insights from detected anomalies
+        let anomalyInsights = generateDetailedAnomalyInsights(
+            from: rankedAnomalies, 
+            baseline: baselineData,
+            contextualFactors: extractContextualFactors(from: healthRecords)
+        )
+        
+        // Assess health risk implications
+        let riskAssessment = assessComprehensiveAnomalyRisk(
+            from: rankedAnomalies,
+            historicalContext: baselineData
+        )
+        
+        let result = EnhancedAnomalyResult(
+            detectedAnomalies: rankedAnomalies,
+            methodResults: methodResults,
+            anomalyInsights: anomalyInsights,
+            riskAssessment: riskAssessment,
+            analysisMetadata: AnomalyAnalysisMetadata(
+                detectionMethods: detectionMethods,
+                analysisTimestamp: Date(),
+                dataQualityScore: calculateDataQualityScore(healthRecords + baselineData),
+                confidenceLevel: calculateOverallConfidenceLevel(from: methodResults)
+            )
+        )
+        
+        logger.logPerformance("detectEnhancedAnomalousPatterns", duration: Date().timeIntervalSince(startTime), success: true)
+        logger.info("Enhanced anomaly detection completed", context: [
+            "totalAnomalies": rankedAnomalies.count,
+            "highSeverityCount": rankedAnomalies.filter { $0.severity == .high || $0.severity == .critical }.count,
+            "methodsUsed": detectionMethods.count
+        ])
+        
+        return result
+    }
+    
+    func analyzeAdvancedCorrelations(
+        between primaryData: [HealthRecordProtocol],
+        and secondaryData: [HealthRecordProtocol],
+        analysisOptions: AdvancedCorrelationOptions = AdvancedCorrelationOptions()
+    ) async throws -> AdvancedCorrelationResult {
+        let startTime = Date()
+        logger.debug("Starting advanced multi-method correlation analysis", context: [
+            "primaryDataCount": primaryData.count,
+            "secondaryDataCount": secondaryData.count,
+            "minimumSampleSize": analysisOptions.minimumSampleSize,
+            "timeWindow": analysisOptions.timeWindow.rawValue
+        ])
+        
+        guard primaryData.count >= analysisOptions.minimumSampleSize && 
+              secondaryData.count >= analysisOptions.minimumSampleSize else {
+            throw ValidationError.invalidInput("InsightEngine", value: "insufficient_data", 
+                                             reason: "Advanced correlation analysis requires at least \(analysisOptions.minimumSampleSize) data points per variable")
+        }
+        
+        // Enhanced time-aligned analysis with multiple correlation methods
+        let alignedData = alignDataByTime(
+            primaryData: primaryData, 
+            secondaryData: secondaryData, 
+            timeWindow: analysisOptions.timeWindow
+        )
+        
+        var correlationResults: [CorrelationMethod: Double] = [:]
+        let dataPoints = alignedData.map { ($0.primaryValue, $0.secondaryValue) }
+        
+        // Multiple sophisticated correlation algorithms
+        correlationResults[.pearson] = calculateRobustPearsonCorrelation(from: dataPoints)
+        correlationResults[.spearman] = calculateSpearmanWithTieCorrection(from: dataPoints)
+        correlationResults[.kendall] = calculateKendallTauB(from: dataPoints)
+        
+        // Partial correlation analysis (controlling for confounding variables)
+        let partialCorrelations = calculatePartialCorrelations(
+            primaryData: primaryData,
+            secondaryData: secondaryData,
+            controlVariables: analysisOptions.controlVariables
+        )
+        
+        // Enhanced time-lagged correlations with bidirectional analysis
+        let timeLaggedResults = try await analyzeEnhancedTimeLaggedCorrelations(
+            between: primaryData,
+            and: secondaryData,
+            maxLagDays: analysisOptions.maxLagDays
+        )
+        
+        // Advanced non-linear pattern detection
+        let nonLinearPatterns = detectAdvancedNonLinearPatterns(
+            from: dataPoints,
+            methods: [.polynomial, .exponential, .logarithmic, .sinusoidal]
+        )
+        
+        // Enhanced causality analysis with multiple methods
+        let causalityResult = try await analyzeEnhancedCausality(
+            primary: primaryData,
+            secondary: secondaryData,
+            maxLag: analysisOptions.maxLagDays,
+            methods: [.grangerCausality, .transferEntropy, .convergentCrossMapping]
+        )
+        
+        // Robust statistical significance with multiple testing correction
+        let significanceResults = calculateRobustStatisticalSignificance(
+            correlations: correlationResults,
+            sampleSize: alignedData.count,
+            adjustForMultipleTesting: true,
+            confidenceLevel: analysisOptions.confidenceLevel
+        )
+        
+        // Advanced data quality assessment
+        let dataQualityMetrics = calculateAdvancedDataQuality(
+            alignedData,
+            includeOutlierAnalysis: true,
+            includeMissingDataAnalysis: true
+        )
+        
+        let result = AdvancedCorrelationResult(
+            primaryDataType: primaryData.first?.type ?? .weight,
+            secondaryDataType: secondaryData.first?.type ?? .steps,
+            correlationResults: correlationResults,
+            partialCorrelations: partialCorrelations,
+            timeLaggedCorrelations: timeLaggedResults,
+            nonLinearPatterns: nonLinearPatterns,
+            causalityResult: causalityResult,
+            significanceResults: significanceResults,
+            analysisOptions: analysisOptions,
+            sampleSize: alignedData.count,
+            dataQualityMetrics: dataQualityMetrics,
+            interpretationGuide: generateCorrelationInterpretationGuide(correlationResults)
+        )
+        
+        logger.logPerformance("analyzeAdvancedCorrelations", duration: Date().timeIntervalSince(startTime), success: true)
+        logger.info("Advanced correlation analysis completed", context: [
+            "strongestCorrelation": correlationResults.values.map(abs).max() ?? 0,
+            "significantCorrelations": significanceResults.filter { $0.value.isSignificant }.count,
+            "nonLinearPatterns": nonLinearPatterns.count
+        ])
+        
+        return result
+    }
+    
+    func generateComprehensiveMonthlyReport(
+        for user: User,
+        month: Date,
+        includeAdvancedAnalytics: Bool = true
+    ) async throws -> ComprehensiveMonthlyReport {
+        let startTime = Date()
+        logger.debug("Generating comprehensive monthly health report", context: [
+            "userId": user.id.uuidString,
+            "month": ISO8601DateFormatter().string(from: month),
+            "includeAdvancedAnalytics": includeAdvancedAnalytics
+        ])
+        
+        let calendar = Calendar.current
+        guard let monthInterval = calendar.dateInterval(of: .month, for: month) else {
+            throw ValidationError.invalidInput("InsightEngine", value: "invalid_month", reason: "Cannot determine month interval")
+        }
+        
+        // Collect comprehensive monthly data with quality assessment
+        let monthlyData = user.healthRecords.filter { record in
+            monthInterval.contains(record.timestamp)
+        }
+        
+        guard !monthlyData.isEmpty else {
+            throw ValidationError.invalidInput("InsightEngine", value: "no_monthly_data", 
+                                             reason: "No health data available for the specified month")
+        }
+        
+        // Generate executive summary with key highlights
+        let executiveSummary = await generateExecutiveSummary(
+            from: monthlyData, 
+            for: user,
+            previousMonthComparison: true
+        )
+        
+        // Enhanced key metrics analysis with statistical significance
+        let keyMetrics = await generateEnhancedKeyMetrics(
+            from: monthlyData,
+            includeConfidenceIntervals: true,
+            includePercentileRankings: true
+        )
+        
+        // Advanced correlation analysis if enabled
+        var correlationAnalysis: AdvancedCorrelationAnalysis?
+        if includeAdvancedAnalytics {
+            correlationAnalysis = try await generateAdvancedCorrelationAnalysis(
+                from: monthlyData,
+                includeCausalityAnalysis: true
+            )
+        }
+        
+        // Enhanced anomaly detection with multiple algorithms
+        let previousMonthData = getPreviousMonthData(for: user, beforeMonth: month)
+        let anomalyAnalysis = try await generateEnhancedAnomalyAnalysis(
+            current: monthlyData,
+            baseline: previousMonthData,
+            includePredictiveAnomalies: includeAdvancedAnalytics
+        )
+        
+        // Advanced trend analysis with forecasting
+        let historicalData = getHistoricalData(for: user, beforeMonth: month, months: 6)
+        let trendAnalysis = await generateAdvancedTrendAnalysis(
+            current: monthlyData,
+            historical: historicalData,
+            includeForecast: includeAdvancedAnalytics,
+            forecastHorizonMonths: 3
+        )
+        
+        // Intelligent goal analysis with adaptive recommendations
+        let goalAnalysis = await generateIntelligentGoalAnalysis(
+            for: user,
+            monthlyData: monthlyData,
+            month: month,
+            includePersonalizedSuggestions: true
+        )
+        
+        // Comprehensive health risk assessment
+        let riskAssessment = await generateComprehensiveHealthRiskAssessment(
+            from: monthlyData,
+            userProfile: user,
+            historicalData: getHistoricalData(for: user, beforeMonth: month, months: 12),
+            includePopulationComparison: includeAdvancedAnalytics
+        )
+        
+        // Generate actionable recommendations with priority scoring
+        let allInsights = [executiveSummary] + keyMetrics + 
+                         (correlationAnalysis?.insights ?? []) + 
+                         anomalyAnalysis.insights + 
+                         trendAnalysis.insights + 
+                         goalAnalysis.insights
+        
+        let recommendations = await generatePrioritizedRecommendations(
+            from: allInsights,
+            riskFactors: riskAssessment.identifiedRisks,
+            userProfile: user,
+            includeImplementationGuide: true
+        )
+        
+        // Comprehensive data quality assessment
+        let dataQualityAssessment = calculateComprehensiveDataQuality(
+            monthlyData,
+            includeCompleteness: true,
+            includeConsistency: true,
+            includeAccuracy: true
+        )
+        
+        let report = ComprehensiveMonthlyReport(
+            userId: user.id,
+            reportMonth: month,
+            executiveSummary: executiveSummary,
+            keyMetrics: keyMetrics,
+            correlationAnalysis: correlationAnalysis,
+            anomalyAnalysis: anomalyAnalysis,
+            trendAnalysis: trendAnalysis,
+            goalAnalysis: goalAnalysis,
+            riskAssessment: riskAssessment,
+            personalizedRecommendations: recommendations,
+            dataQualityAssessment: dataQualityAssessment,
+            generatedAt: Date(),
+            reportVersion: "2.1.0",
+            analyticsLevel: includeAdvancedAnalytics ? .comprehensive : .standard
+        )
+        
+        logger.logPerformance("generateComprehensiveMonthlyReport", duration: Date().timeIntervalSince(startTime), success: true)
+        logger.info("Comprehensive monthly report generated successfully", context: [
+            "insightsCount": recommendations.count,
+            "anomaliesCount": anomalyAnalysis.detectedAnomalies.count,
+            "dataQualityScore": dataQualityAssessment.overallScore,
+            "reportSizeKB": (try? JSONSerialization.data(withJSONObject: report).count ?? 0) / 1024
+        ])
+        
+        return report
     }
     
     // MARK: - Health Insights Generation
@@ -399,7 +713,7 @@ final class InsightEngine: InsightEngineProtocol {
         
         // Filter insights by priority level
         let prioritizedInsights = on.filter { insight in
-            insight.priority.urgencyScore >= priorityLevel.urgencyScore
+            Double(insight.priority.urgencyScore) >= priorityLevel.urgencyScore
         }
         
         // Generate personalized recommendations for each insight

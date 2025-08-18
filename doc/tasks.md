@@ -32,25 +32,28 @@
   - ✅ InsightEngineの基本実装とテスト作成（スタブレベル）
   - _要件: 2.1, 2.2, 5.3, 6.1_
 
-- [x] 6. ViewModelの実装（@Observable） 🔄 **部分完了**
-  - ⏳ HealthDataViewModelの実装とテスト作成
-  - ⏳ TrendsViewModelの実装とテスト作成
-  - ⏳ GoalsViewModelの実装とテスト作成
+- [x] 6. ViewModelの実装（@Observable） ✅ **完了**
+  - ✅ HealthDataViewModelの実装とテスト作成
+  - ✅ TrendsViewModelの実装とテスト作成
+  - ✅ GoalsViewModelの実装とテスト作成
+  - ✅ DashboardViewModelの実装とテスト作成
   - ✅ NotificationSettingsViewModelの実装とテスト作成
   - _要件: 2.1, 2.2, 2.3, 5.1_
 
-- [x] 7. 基本UI実装（SwiftUI） 🔄 **部分完了**
-  - ✅ メインダッシュボードViewの実装
-  - ⏳ HealthKit許可要求画面の実装
-  - ✅ 基本的なナビゲーション構造の実装
-  - ✅ 通知設定画面の実装
+- [x] 7. 基本UI実装（SwiftUI） ✅ **完了**
+  - ✅ メインダッシュボードViewの実装（包括的なカード型レイアウト）
+  - ✅ HealthKit許可要求画面の実装（HealthKitPermissionView）
+  - ✅ 基本的なナビゲーション構造の実装（MainTabView）
+  - ✅ 通知設定画面の実装（NotificationSettingsView）
+  - ✅ 共有UIコンポーネント群の実装（BadgeView、ValidationErrorView等）
   - _要件: 1.1, 4.3_
 
-- [x] 8. データ可視化機能の実装 🔄 **部分完了**
+- [x] 8. データ可視化機能の実装 ✅ **完了**
   - ✅ Charts frameworkを使用したトレンドグラフの実装
   - ✅ 週次・月次・年次表示切り替え機能の実装
   - ✅ 移動平均線と統計情報の表示機能
-  - ✅ 詳細統計表示とマルチデータ比較機能
+  - ✅ 詳細統計表示とマルチデータ比較機能（EnhancedTrendsView）
+  - ✅ カスタム期間選択とマルチ指標比較機能
   - _要件: 2.1, 2.2, 2.3_
 
 - [x] 9. 手動データ入力機能の実装 ✅ **完了**
@@ -76,25 +79,25 @@
   - ✅ TDD通知機能テストスイート作成
   - _要件: 4.1, 4.2_
 
-- [ ] 12. ゲーミフィケーション機能の実装
-  - BadgeServiceの実装とテスト作成（バッジ判定ロジック）
-  - SwiftUI描画によるBadgeViewの実装（多様なデザインパターン）
-  - バッジ獲得アニメーションとお祝い演出の実装
-  - バッジコレクション画面の実装
+- [x] 12. ゲーミフィケーション機能の実装 ✅ **完了**
+  - ✅ BadgeServiceの実装とテスト作成（特殊達成アルゴリズム含む高度な実装）
+  - ✅ SwiftUI描画によるBadgeViewの実装（多様なデザインパターン）
+  - ✅ バッジ獲得アニメーションとお祝い演出の実装
+  - ✅ バッジコレクション画面とBadgeEarnedCelebrationViewの実装
   - _要件: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 13. アニメーションとUI/UX向上
-  - 継続ストリーク表示とアニメーション実装
-  - データ更新時のスムーズなアニメーション
-  - ローディング状態とエラー状態のUI実装
-  - バッジ獲得時の祝福アニメーション統合
+- [x] 13. アニメーションとUI/UX向上 ✅ **完了**
+  - ✅ 継続ストリーク表示とアニメーション実装（StreakIndicatorView）
+  - ✅ データ更新時のスムーズなアニメーション（ContinuationAnimationService）
+  - ✅ ローディング状態とエラー状態のUI実装（LoadingView、ErrorView）
+  - ✅ バッジ獲得時の祝福アニメーション統合（強化されたアニメーションシステム）
   - _要件: 4.3, 4.4, 7.4_
 
-- [ ] 14. SNS共有機能の実装
-  - SocialShareServiceの実装とテスト作成
-  - 共有用画像生成機能（SwiftUIビューから画像作成）
-  - 主要SNS（Twitter、Instagram、LINE）への共有機能
-  - バッジ情報を含む共有画像の生成機能
+- [x] 14. SNS共有機能の実装 ✅ **完了**
+  - ✅ SocialShareServiceの実装とテスト作成（包括的な共有サービス）
+  - ✅ 共有用画像生成機能（ShareImageGenerator with SwiftUI画像作成）
+  - ✅ 主要SNS（Twitter、Instagram、LINE、native）への共有機能
+  - ✅ バッジ情報を含む共有画像の生成機能（ブランデッド画像生成）
   - _要件: 3.1, 3.2, 3.3, 3.4, 7.5_
 
 - [ ] 15. インサイト機能の実装

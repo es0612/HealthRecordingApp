@@ -507,10 +507,16 @@ final class TrendsViewModel {
             timeRange = .week
         case .month:
             timeRange = .month
+        case .threeMonths:
+            timeRange = .threeMonths
+        case .sixMonths:
+            timeRange = .sixMonths
         case .quarter:
             timeRange = .threeMonths
         case .year:
             timeRange = .year
+        case .custom:
+            timeRange = .custom(startDate: Date().addingTimeInterval(-30*24*3600), endDate: Date())
         }
         
         selectedTimeRange = timeRange

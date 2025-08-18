@@ -575,6 +575,7 @@ struct HealthRiskAssessment: Codable, Identifiable {
 }
 
 enum RiskLevel: String, CaseIterable, Codable {
+    case veryLow = "very_low"
     case low = "low"
     case moderate = "moderate"
     case high = "high"
@@ -582,6 +583,7 @@ enum RiskLevel: String, CaseIterable, Codable {
     
     var displayName: String {
         switch self {
+        case .veryLow: return "とても低リスク"
         case .low: return "低リスク"
         case .moderate: return "中リスク"
         case .high: return "高リスク"
@@ -591,6 +593,7 @@ enum RiskLevel: String, CaseIterable, Codable {
     
     var colorCode: String {
         switch self {
+        case .veryLow: return "#00DD00"
         case .low: return "#00AA00"
         case .moderate: return "#FFAA00"
         case .high: return "#FF6600"

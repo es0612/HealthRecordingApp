@@ -42,18 +42,16 @@ struct ManualDataInputView: View {
     // Dependencies
     private let logger: AILoggerProtocol
     private let validationService: HealthDataValidationServiceProtocol
-    private let errorHandler: ValidationErrorHandler
+    @State private var errorHandler = ValidationErrorHandler()
     
     init(
         isPresented: Binding<Bool>,
         logger: AILoggerProtocol = AILogger(),
-        validationService: HealthDataValidationServiceProtocol = HealthDataValidationService(),
-        errorHandler: ValidationErrorHandler = ValidationErrorHandler()
+        validationService: HealthDataValidationServiceProtocol = HealthDataValidationService()
     ) {
         self._isPresented = isPresented
         self.logger = logger
         self.validationService = validationService
-        self.errorHandler = errorHandler
     }
     
     // Computed property for use case (created dynamically with environment context)
@@ -152,6 +150,7 @@ struct ManualDataInputView: View {
             }
             .disabled(isLoading)
         }
+        .continuationAnimations()
     }
     
     // MARK: - Data Type Selector
@@ -522,6 +521,16 @@ struct ManualDataInputView: View {
                 await MainActor.run {
                     isLoading = false
                     showingSuccessMessage = true
+                    
+                    // Trigger continuation animation for successful data entry
+                    Task {
+                        let animationService = ContinuationAnimationService()
+                        await animationService.triggerDataEntrySuccess()
+                        
+                        // Also trigger motivational pulse for engagement
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
+                        await animationService.triggerMotivationalPulse()
+                    }
                     
                     logger.info("Manual data saved successfully", context: [
                         "data_type": selectedDataType.rawValue,

@@ -94,30 +94,7 @@ struct Milestone: Codable, Identifiable {
     }
 }
 
-enum MotivationLevel: String, CaseIterable, Codable {
-    case high = "high"
-    case medium = "medium"
-    case low = "low"
-    case critical = "critical"
-    
-    var displayName: String {
-        switch self {
-        case .high: return "高い"
-        case .medium: return "中程度"
-        case .low: return "低い"
-        case .critical: return "要注意"
-        }
-    }
-    
-    var emoji: String {
-        switch self {
-        case .high: return "🔥"
-        case .medium: return "👍"
-        case .low: return "😐"
-        case .critical: return "⚠️"
-        }
-    }
-}
+// MotivationLevel is defined in AIGoalSuggestionModels.swift
 
 enum MilestonePriority: String, CaseIterable, Codable {
     case high = "high"
